@@ -1,4 +1,5 @@
 import math
+import os
 
 #Positive for player 1
 #Negative for player 2
@@ -20,22 +21,24 @@ class bcolors:
 
 chars = [" ", ".", "♔", "♕", "♖", "♙", "♗", "♘"]
 
-def displayLevel(levelState):
+def displayLevel(levelState, turnCounter):
+    os.system("cls")
+    print("Turn: " + str(turnCounter + 1))
     rows = len(levelState)
     cols = len(levelState[0])
 
-    endSpaces = ''.join([" " for _ in range(math.ceil(cols / 26))])
-    if cols > 26:
-        endSpaces += " "
-
     print("\t  ", end="")
     for i in range(cols):
-        colChar = chr(((i) % 26) + 65)
-        mult = math.ceil((i + 1) / 26)
+        secondChar = " "
+        if i < 26:
+            firstChar = chr(((i) % 26) + 65)
+        else:
+            firstChar = chr(math.ceil((i + 1) / 26) + 65)
+            secondChar = chr(((i) % 26) + 65)
 
-        print(''.join([colChar for _ in range(mult)]), end=''.join([" " for _ in range(len(endSpaces) - mult + 1)]))
+        print(firstChar + secondChar + " ", end="")
 
-    print("\n\t  " + ''.join(["-" + endSpaces for _ in range(cols)]))
+    print("\n\t  " + ''.join(["-  " for _ in range(cols)]))
 
     for i, row in enumerate(levelState):
         print(str(i) + "\t" + "| ", end="")
@@ -47,8 +50,8 @@ def displayLevel(levelState):
             else:
                 color = bcolors.EMPTY
             
-            print(color + chars[abs(tile)] + bcolors.ENDC, end=endSpaces)
+            print(color + chars[abs(tile)] + bcolors.ENDC, end="  ")
         
         print("|")
 
-    print("\t  " + ''.join(["-" + endSpaces for _ in range(cols)]))
+    print("\t  " + ''.join(["-  " for _ in range(cols)]))
