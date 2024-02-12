@@ -21,8 +21,9 @@ class bcolors:
 
 chars = [" ", ".", "♔", "♕", "♖", "♙", "♗", "♘"]
 
-def displayLevel(levelState, turnCounter):
-    os.system("cls")
+def displayLevel(levelState, turnCounter, clear):
+    if clear:
+        os.system("cls")
     print("Turn: " + str(turnCounter + 1))
     rows = len(levelState)
     cols = len(levelState[0])

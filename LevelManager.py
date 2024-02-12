@@ -107,6 +107,43 @@ def incrementTurn(levelState, buildingTurnCounter):
 
     return levelState, buildingTurnCounter
 
+def isValidMove(levelState, tiles, currPlayer):
+    #Out of bounds
+    if tiles[0][0] < 0 or tiles[0][0] >= len(levelState[0]) or tiles[1][0] < 0 or tiles[1][0] >= len(levelState[0]):
+        return False
+    
+    if tiles[0][1] < 0 or tiles[0][1] >= len(levelState) or tiles[1][1] < 0 or tiles[1][1] >= len(levelState):
+        return False
+
+    #Moving more than 1 space (allows diagonal)
+    if abs(tiles[0][0] - tiles[1][0]) > 1 or abs(tiles[0][1] - tiles[1][1]) > 1:
+        return False
+
+    #A unit that can be moved
+    if abs(levelState[tiles[0][0]][tiles[0][1]]) < 5 or abs(levelState[tiles[0][0]][tiles[0][1]]) > 7:
+        return False
+
+    #Can only move a unit of your team
+    if levelState[tiles[0][0]][tiles[0][1]] != int(math.copysign(levelState[tiles[0][0]][tiles[0][1]], currPlayer)):
+        return False
+
+    #Can't move into your own unit or building, accounts for the ground being positive
+    if levelState[tiles[1][0]][tiles[1][1]] == int(math.copysign(levelState[tiles[1][0]][tiles[1][1]], currPlayer)) and levelState[tiles[1][0]][tiles[1][1]] != 1 and (tiles[1][0] - tiles[0][0]) + (tiles[1][1] - tiles[0][1]) != 0:
+        return False
+
+    #Can't move into something that's not ground if you're not a soldier
+    if levelState[tiles[1][0]][tiles[1][1]] != 1 and abs(levelState[tiles[0][0]][tiles[0][1]]) != 7 and (tiles[1][0] - tiles[0][0]) + (tiles[1][1] - tiles[0][1]) != 0:
+        return False
+
+    #Can't move into nothing
+    if levelState[tiles[1][0]][tiles[1][1]] == 0:
+        return False
+    
+    if tiles[0][0] != tiles[1][0] and tiles[0][1] != tiles[1][1] and abs(levelState[tiles[0][0]][tiles[0][1]]) == 7:
+        return False
+    
+    return True
+
 #(beginning column-row) (ending column-row)
 def parseMove(levelState, moveStr, currPlayer):
     try:
@@ -142,41 +179,10 @@ def parseMove(levelState, moveStr, currPlayer):
     tiles[0][1] = int(tiles[0][1])
     tiles[1][1] = int(tiles[1][1])
 
-    #Out of bounds
-    if tiles[0][0] < 0 or tiles[0][0] >= len(levelState[0]) or tiles[1][0] < 0 or tiles[1][0] >= len(levelState[0]):
-        return None
-    
-    if tiles[0][1] < 0 or tiles[0][1] >= len(levelState) or tiles[1][1] < 0 or tiles[1][1] >= len(levelState):
-        return None
-    
     tiles[0] = swapPositions(tiles[0], 0, 1)
     tiles[1] = swapPositions(tiles[1], 0, 1)
 
-    #Moving more than 1 space (allows diagonal)
-    if abs(tiles[0][0] - tiles[1][0]) > 1 or abs(tiles[0][1] - tiles[1][1]) > 1:
-        return None
-
-    #A unit that can be moved
-    if abs(levelState[tiles[0][0]][tiles[0][1]]) < 5 or abs(levelState[tiles[0][0]][tiles[0][1]]) > 7:
-        return None
-
-    #Can only move a unit of your team
-    if levelState[tiles[0][0]][tiles[0][1]] != int(math.copysign(levelState[tiles[0][0]][tiles[0][1]], currPlayer)):
-        return None
-
-    #Can't move into your own unit or building, accounts for the ground being positive
-    if levelState[tiles[1][0]][tiles[1][1]] == int(math.copysign(levelState[tiles[1][0]][tiles[1][1]], currPlayer)) and levelState[tiles[1][0]][tiles[1][1]] != 1 and (tiles[0][0] != tiles[1][0] and tiles[0][1] != tiles[1][1]):
-        return None
-
-    #Can't move into something that's not ground if you're not a soldier
-    if levelState[tiles[1][0]][tiles[1][1]] != 1 and abs(levelState[tiles[0][0]][tiles[0][1]]) != 7 and (tiles[0][0] != tiles[1][0] and tiles[0][1] != tiles[1][1]):
-        return None
-
-    #Can't move into nothing
-    if levelState[tiles[1][0]][tiles[1][1]] == 0:
-        return None
-    
-    if tiles[0][0] != tiles[1][0] and tiles[0][1] != tiles[1][1] and abs(levelState[tiles[0][0]][tiles[0][1]]) == 7:
+    if not isValidMove(levelState, tiles, currPlayer):
         return None
 
     return tiles

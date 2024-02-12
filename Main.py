@@ -1,5 +1,6 @@
 import Display
 import LevelManager
+import MinMaxAI
 import os
 import sys
 
@@ -23,7 +24,7 @@ while(levelName not in os.listdir(levelLoc)):
 turnCounter = 0
 initMat, buildingTurnCounter = LevelManager.readLevel(levelLoc + levelName)
 while LevelManager.checkWinCond(initMat) == 0:
-    Display.displayLevel(initMat, turnCounter)
+    Display.displayLevel(initMat, turnCounter, False)
     player1Move = input("What move does player 1 make? ")
 
     if player1Move.lower() != "skip":
@@ -35,7 +36,7 @@ while LevelManager.checkWinCond(initMat) == 0:
 
         initMat, buildingTurnCounter = LevelManager.makeMove(initMat, buildingTurnCounter, parsedP1Move)
 
-    Display.displayLevel(initMat, turnCounter)
+    Display.displayLevel(initMat, turnCounter, True)
     player2Move = input("What move does player 2 make? ")
 
     if player2Move.lower() != "skip":
