@@ -59,11 +59,11 @@ while True:
     currPlayer = -1
     while LevelManager.checkWinCond(levelState) == 0:
         currPlayer *= -1
+        levelState, buildingTurnCounter = LevelManager.incrementTurn(levelState, buildingTurnCounter)
 
         if currPlayer == 1:
-            turnCounter += 1
-
-        levelState, buildingTurnCounter = LevelManager.incrementTurn(levelState, buildingTurnCounter)
+            turnCounter += 1    
+        
         Display.displayLevel(levelState, turnCounter, True)
 
         userType = userTypes[0 if currPlayer == 1 else 1]
@@ -98,16 +98,26 @@ while True:
         elif userType == 1:
             parsedMove = MinMaxAI.chooseMove(levelState, buildingTurnCounter, currPlayer)
         elif userType == 2:
-            parsedMove = MinMaxAI.getValidMoves(levelState, currPlayer)[0]
+            parsedMove = MinMaxAI.getValidMoves(levelState, currPlayer)
+            if len(parsedMove) == 0:
+                parsedMove = None
+            else:
+                parsedMove = parsedMove[0]
 
-        #need to add accountability for cases where there are no valid moves
-        #userType 2 fails in this case, I believe type 1 would also fail
-
-        levelState, buildingTurnCounter = LevelManager.makeMove(levelState, buildingTurnCounter, parsedMove)
+        if parsedMove != None:
+            levelState, buildingTurnCounter = LevelManager.makeMove(levelState, buildingTurnCounter, parsedMove)
 
         if userType != 0:
             Display.displayLevel(levelState, turnCounter, True)
-            print("AI Move: " + str(parsedMove))
+            if currPlayer > 0:
+                print("Player 1 (blue):")
+            else:
+                print("Player 2 (red):")
+            
+            if parsedMove != None:
+                print("AI Move: " + str(parsedMove))
+            else:
+                print("No move made.")
             _ = input("Type anything to continue. ")
 
     winner = LevelManager.checkWinCond(levelState)

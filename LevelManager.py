@@ -8,7 +8,7 @@ import copy
 #3 for player 2 start
 
 #settlement, town, barracks
-buildingTurnThresholds = [6, 7, 5]
+buildingTurnThresholds = [14, 12, 10]
 
 #chance the attacking solider wins against an enemy solider
 attackThreshold = 0.75
@@ -204,6 +204,9 @@ def parseMove(levelState, moveStr, currPlayer):
 def makeMove(levelState, buildingTurnCounter, move):
     newState = copy.deepcopy(levelState)
     newTurnCounter = copy.deepcopy(buildingTurnCounter)
+
+    if move == None:
+        return newState, newTurnCounter
     
     unitID = levelState[move[0][0]][move[0][1]]
     moveToID = levelState[move[1][0]][move[1][1]]

@@ -4,11 +4,14 @@ import math
 import copy
 
 #settlement, town, barracks, settler, worker, soldier
-friendlyUnitValues = [8, 3, 7, 2, 4, 6]
-enemyUnitValues = [-10, -3, -8, -2, -4, -8]
+friendlyUnitValues = [20, 10, 15, 5, 11, 20]
+enemyUnitValues = [-30, -15, -20, -5, -10, -20]
 
 def chooseMove(levelState, buildingTurnCounter, currPlayer):
-    stateBudget = 1000
+    if len(getValidMoves(levelState, currPlayer)) == 0:
+        return None
+    
+    stateBudget = 10000
     
     bestMove = None
     maxUtil = -float("inf")
@@ -34,7 +37,7 @@ def chooseMove(levelState, buildingTurnCounter, currPlayer):
 
             util = 0
 
-            util, stateBudget, alpha, beta = findMin(childState, childTurnCounter, alpha, beta, stateBudget, currDepth, 1, -1 * currPlayer)
+            util, stateBudget, alpha, beta = findMin(childState, childTurnCounter, alpha, beta, stateBudget, currDepth, 1, -1 * currPlayer, currPlayer)
             
             if(util > maxUtil):
                 currMaxUtil = util
@@ -49,22 +52,24 @@ def chooseMove(levelState, buildingTurnCounter, currPlayer):
         if stateBudget <= 0:
             break
 
-    if bestMove != None:
-        return bestMove
-    else:
-        print("error finding best move")
-        return getValidMoves(levelState, currPlayer)[0]
+    print(currDepth)
+    return bestMove
 
-def findMin(curr, buildingTurnCounter, alpha, beta, stateBudget, maxDepth, currDepth, player):
+def findMin(curr, buildingTurnCounter, alpha, beta, stateBudget, maxDepth, currDepth, player, startPlayer):
     if currDepth >= maxDepth:
-        return getValueOfState(curr, player), stateBudget, alpha, beta
+        return getValueOfState(curr, startPlayer), stateBudget, alpha, beta
 
     curr = copy.deepcopy(curr)
     buildingTurnCounter = copy.deepcopy(buildingTurnCounter)
 
+    validMoves = getValidMoves(curr, player)
+    if len(validMoves) == 0:
+        curr, buildingTurnCounter = LevelManager.incrementTurn(curr, buildingTurnCounter)
+        return findMax(curr, buildingTurnCounter, alpha, beta, stateBudget - 1, maxDepth, currDepth + 1, player * -1, startPlayer)
+
     minUtil = float("inf")
 
-    for move in getValidMoves(curr, player):
+    for move in validMoves:
         stateBudget -= 1
         if stateBudget <= 0:
             break
@@ -72,7 +77,7 @@ def findMin(curr, buildingTurnCounter, alpha, beta, stateBudget, maxDepth, currD
         childState, childTurnCounter = LevelManager.makeMove(curr, buildingTurnCounter, move)
         childState, childTurnCounter = LevelManager.incrementTurn(childState, childTurnCounter)
 
-        childVal, stateBudget, alpha, beta = findMax(childState, childTurnCounter, alpha, beta, stateBudget, maxDepth, currDepth + 1, player * -1)
+        childVal, stateBudget, alpha, beta = findMax(childState, childTurnCounter, alpha, beta, stateBudget, maxDepth, currDepth + 1, player * -1, startPlayer)
         
         minUtil = min(childVal, minUtil)
 
@@ -83,16 +88,22 @@ def findMin(curr, buildingTurnCounter, alpha, beta, stateBudget, maxDepth, currD
 
     return minUtil, stateBudget, alpha, beta
 
-def findMax(curr, buildingTurnCounter, alpha, beta, stateBudget, maxDepth, currDepth, player):
+def findMax(curr, buildingTurnCounter, alpha, beta, stateBudget, maxDepth, currDepth, player, startPlayer):
     if currDepth >= maxDepth:
-        return getValueOfState(curr, player), stateBudget, alpha, beta
+        return getValueOfState(curr, startPlayer), stateBudget, alpha, beta
 
     curr = copy.deepcopy(curr)
     buildingTurnCounter = copy.deepcopy(buildingTurnCounter)
 
-    maxUtil = float("inf")
+    maxUtil = -float("inf")
 
-    for move in getValidMoves(curr, player):
+    validMoves = getValidMoves(curr, player)
+
+    if len(validMoves) == 0:
+        curr, buildingTurnCounter = LevelManager.incrementTurn(curr, buildingTurnCounter)
+        return findMin(curr, buildingTurnCounter, alpha, beta, stateBudget - 1, maxDepth, currDepth + 1, player * -1, startPlayer)
+
+    for move in validMoves:
         stateBudget -= 1
         if stateBudget <= 0:
             break
@@ -100,7 +111,7 @@ def findMax(curr, buildingTurnCounter, alpha, beta, stateBudget, maxDepth, currD
         childState, childTurnCounter = LevelManager.makeMove(curr, buildingTurnCounter, move)
         childState, childTurnCounter = LevelManager.incrementTurn(childState, childTurnCounter)
 
-        childVal, stateBudget, alpha, beta = findMin(childState, childTurnCounter, alpha, beta, stateBudget, maxDepth, currDepth + 1, player * -1)
+        childVal, stateBudget, alpha, beta = findMin(childState, childTurnCounter, alpha, beta, stateBudget, maxDepth, currDepth + 1, player * -1, startPlayer)
 
         maxUtil = max(childVal, maxUtil)
 
@@ -125,7 +136,7 @@ def getValidMoves(levelState, currPlayer):
             offsets = [-1, 0, 1]
             for offset0 in offsets:
                 for offset1 in offsets:
-                    if offset0 + offset1 == 0 and abs(tile) == 7:
+                    if offset0 == 0 and offset1 == 0 and abs(tile) == 7:
                         continue
 
                     currMove = [[i, j], [i + offset0, j + offset1]]
@@ -135,6 +146,9 @@ def getValidMoves(levelState, currPlayer):
     return result
 
 def getValueOfState(levelState, currPlayer):
+    if LevelManager.checkWinCond(levelState) != 0:
+        return float("inf") if currPlayer == math.copysign(currPlayer, LevelManager.checkWinCond(levelState)) else -float("inf")
+    
     result = 0
     
     for row in levelState:
