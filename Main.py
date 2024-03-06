@@ -1,6 +1,7 @@
 import Display
 import LevelManager
 import MinMaxAI
+import MenuManager
 import os
 import sys
 
@@ -15,44 +16,72 @@ if testing:
 else:
     levelLoc = "Levels/Final"
 
-print(*os.listdir(levelLoc), sep=", ")
-levelName = input("Which level do you want to play? ")
-while(levelName not in os.listdir(levelLoc)):
+userIn = ""
+while True:
+    MenuManager.printMainMenu()
+    userIn = input()
+
+    if userIn.lower() == "quit":
+        break
+
+    while not MenuManager.validSelection(userIn):
+        print("Invalid selection, please try again")
+        userIn = input()
+
+    if int(userIn) == 7:
+        MenuManager.printHelpMenu()
+        userIn = input()
+        continue
+
+    print("\nAvailable Levels: ")
     print(*os.listdir(levelLoc), sep=", ")
-    levelName = input("Invalid level name. Which level do you want to play? ")
+    levelName = input("Which level do you want to play? ")
+    while(levelName not in os.listdir(levelLoc)):
+        print(*os.listdir(levelLoc), sep=", ")
+        levelName = input("Invalid level name. Which level do you want to play? ")
 
-turnCounter = 0
-initMat, buildingTurnCounter = LevelManager.readLevel(levelLoc + levelName)
-while LevelManager.checkWinCond(initMat) == 0:
-    Display.displayLevel(initMat, turnCounter, False)
-    player1Move = input("What move does player 1 make? ")
+    turnCounter = 0
+    initMat, buildingTurnCounter = LevelManager.readLevel(levelLoc + levelName)
 
-    if player1Move.lower() != "skip":
-        parsedP1Move = LevelManager.parseMove(initMat, player1Move, 1)
 
-        while parsedP1Move == None:
-            player1Move = input("Invalid move! Try again: ")
-            parsedP1Move = LevelManager.parseMove(initMat, player1Move, 1) 
+    currPlayer = -1
+    while LevelManager.checkWinCond(initMat) == 0:
+        currPlayer *= -1
+        initMat, buildingTurnCounter = LevelManager.incrementTurn(initMat, buildingTurnCounter)
+        Display.displayLevel(initMat, turnCounter, True)
 
-        initMat, buildingTurnCounter = LevelManager.makeMove(initMat, buildingTurnCounter, parsedP1Move)
+        if currPlayer > 0:
+            print("Player 1 (blue):")
+        else:
+            print("Player 2 (red):")
 
-    Display.displayLevel(initMat, turnCounter, True)
-    player2Move = input("What move does player 2 make? ")
+        if len(MinMaxAI.getValidMoves(initMat, currPlayer)) == 0:
+            playerMove = input("No valid moves can be made. Type anything to continue.\n")
+            continue
 
-    if player2Move.lower() != "skip":
-        parsedP2Move = LevelManager.parseMove(initMat, player2Move, -1)
+        playerMove = input("What move do you make? Type \"skip\" to skip your turn or \"quit\" to exit the game.\n")
 
-        while parsedP2Move == None:
-            player2Move = input("Invalid move! Try again: ")
-            parsedP2Move = LevelManager.parseMove(initMat, player2Move, -1)
+        if playerMove.lower() == "quit":
+            break
 
-        initMat, buildingTurnCounter = LevelManager.makeMove(initMat, buildingTurnCounter, parsedP2Move)
+        if playerMove.lower() == "skip":
+            continue
 
-    initMat, buildingTurnCounter = LevelManager.incrementTurn(initMat, buildingTurnCounter)
-    turnCounter += 1
+        parsedMove = LevelManager.parseMove(initMat, playerMove, currPlayer)
+        while parsedMove == None and playerMove.lower() != "skip" and playerMove.lower() != "quit":
+            playerMove = input("Invalid move! Try again: ")
+            parsedMove = LevelManager.parseMove(initMat, playerMove, currPlayer) 
 
-winner = LevelManager.checkWinCond(initMat)
-if winner == 1:
-    print("Congratulations player 1 for winning!")
-else:
-    print("Congratulations player 2 for winning!")
+        if playerMove.lower() == "quit":
+            break
+
+        if playerMove.lower() == "skip":
+            continue
+
+        initMat, buildingTurnCounter = LevelManager.makeMove(initMat, buildingTurnCounter, parsedMove)
+
+    winner = LevelManager.checkWinCond(initMat)
+    if winner == 1:
+        print("Congratulations player 1 for winning!")
+    elif winner == -1:
+        print("Congratulations player 2 for winning!")

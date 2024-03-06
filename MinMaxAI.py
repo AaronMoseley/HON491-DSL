@@ -16,8 +16,6 @@ def getValidMoves(levelState, currPlayer):
             if abs(tile) >= 2 and abs(tile) <= 4:
                 continue
 
-            print(tile)
-
             offsets = [-1, 0, 1]
             for offset0 in offsets:
                 for offset1 in offsets:
@@ -27,8 +25,6 @@ def getValidMoves(levelState, currPlayer):
                     currMove = [[i, j], [i + offset0, j + offset1]]
                     if LevelManager.isValidMove(levelState, currMove, currPlayer):
                         result.append(currMove)
-                    else:
-                        print("invalid")
 
     return result
 

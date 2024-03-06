@@ -147,15 +147,25 @@ def isValidMove(levelState, tiles, currPlayer):
 #(beginning column-row) (ending column-row)
 def parseMove(levelState, moveStr, currPlayer):
     try:
-        tiles = [tile.split("-") for tile in moveStr.split()]
+        moveStr = moveStr.split()
     except:
         return None
     
-    if len(tiles) != 2:
+    if len(moveStr) != 2:
         return None
     
-    if len(tiles[0]) != 2 or len(tiles[1]) != 2:
-        return None
+    tiles = [[], []]
+    for i, tile in enumerate(moveStr):
+        firstNum = 0
+        for j, c in enumerate(tile):
+            if c.isdigit():
+                firstNum = j
+                break
+
+        tiles[i].append(tile[:firstNum])
+        tiles[i].append(tile[firstNum:])
+
+    print(tiles)
 
     col1 = tiles[0][0].upper()
     col2 = tiles[1][0].upper()
