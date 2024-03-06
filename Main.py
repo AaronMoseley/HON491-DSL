@@ -28,10 +28,22 @@ while True:
         print("Invalid selection, please try again")
         userIn = input()
 
+    userTypes = [0, 0]
     if int(userIn) == 7:
         MenuManager.printHelpMenu()
         userIn = input()
         continue
+    else:
+        if int(userIn) == 2:
+            userTypes = [0, 1]
+        elif int(userIn) == 3:
+            userTypes = [0, 2]
+        elif int(userIn) == 4:
+            userTypes = [1, 1]
+        elif int(userIn) == 5:
+            userTypes = [1, 2]
+        elif int(userIn) == 6:
+            userTypes = [2, 2]
 
     print("\nAvailable Levels: ")
     print(*os.listdir(levelLoc), sep=", ")
@@ -41,46 +53,64 @@ while True:
         levelName = input("Invalid level name. Which level do you want to play? ")
 
     turnCounter = 0
-    initMat, buildingTurnCounter = LevelManager.readLevel(levelLoc + levelName)
+    levelState, buildingTurnCounter = LevelManager.readLevel(levelLoc + levelName)
 
 
     currPlayer = -1
-    while LevelManager.checkWinCond(initMat) == 0:
+    while LevelManager.checkWinCond(levelState) == 0:
         currPlayer *= -1
-        initMat, buildingTurnCounter = LevelManager.incrementTurn(initMat, buildingTurnCounter)
-        Display.displayLevel(initMat, turnCounter, True)
 
-        if currPlayer > 0:
-            print("Player 1 (blue):")
-        else:
-            print("Player 2 (red):")
+        if currPlayer == 1:
+            turnCounter += 1
 
-        if len(MinMaxAI.getValidMoves(initMat, currPlayer)) == 0:
-            playerMove = input("No valid moves can be made. Type anything to continue.\n")
-            continue
+        levelState, buildingTurnCounter = LevelManager.incrementTurn(levelState, buildingTurnCounter)
+        Display.displayLevel(levelState, turnCounter, True)
 
-        playerMove = input("What move do you make? Type \"skip\" to skip your turn or \"quit\" to exit the game.\n")
+        userType = userTypes[0 if currPlayer == 1 else 1]
+        if userType == 0:
+            if currPlayer > 0:
+                print("Player 1 (blue):")
+            else:
+                print("Player 2 (red):")
 
-        if playerMove.lower() == "quit":
-            break
+            if len(MinMaxAI.getValidMoves(levelState, currPlayer)) == 0:
+                playerMove = input("No valid moves can be made. Type anything to continue.\n")
+                continue
 
-        if playerMove.lower() == "skip":
-            continue
+            playerMove = input("What move do you make? Type \"skip\" to skip your turn or \"quit\" to exit the game.\n")
 
-        parsedMove = LevelManager.parseMove(initMat, playerMove, currPlayer)
-        while parsedMove == None and playerMove.lower() != "skip" and playerMove.lower() != "quit":
-            playerMove = input("Invalid move! Try again: ")
-            parsedMove = LevelManager.parseMove(initMat, playerMove, currPlayer) 
+            if playerMove.lower() == "quit":
+                break
 
-        if playerMove.lower() == "quit":
-            break
+            if playerMove.lower() == "skip":
+                continue
 
-        if playerMove.lower() == "skip":
-            continue
+            parsedMove = LevelManager.parseMove(levelState, playerMove, currPlayer)
+            while parsedMove == None and playerMove.lower() != "skip" and playerMove.lower() != "quit":
+                playerMove = input("Invalid move! Try again: ")
+                parsedMove = LevelManager.parseMove(levelState, playerMove, currPlayer) 
 
-        initMat, buildingTurnCounter = LevelManager.makeMove(initMat, buildingTurnCounter, parsedMove)
+            if playerMove.lower() == "quit":
+                break
 
-    winner = LevelManager.checkWinCond(initMat)
+            if playerMove.lower() == "skip":
+                continue
+        elif userType == 1:
+            parsedMove = MinMaxAI.chooseMove(levelState, buildingTurnCounter, currPlayer)
+        elif userType == 2:
+            parsedMove = MinMaxAI.getValidMoves(levelState, currPlayer)[0]
+
+        #need to add accountability for cases where there are no valid moves
+        #userType 2 fails in this case, I believe type 1 would also fail
+
+        levelState, buildingTurnCounter = LevelManager.makeMove(levelState, buildingTurnCounter, parsedMove)
+
+        if userType != 0:
+            Display.displayLevel(levelState, turnCounter, True)
+            print("AI Move: " + str(parsedMove))
+            _ = input("Type anything to continue. ")
+
+    winner = LevelManager.checkWinCond(levelState)
     if winner == 1:
         print("Congratulations player 1 for winning!")
     elif winner == -1:

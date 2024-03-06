@@ -1,5 +1,6 @@
 import math
 import random
+import copy
 
 #0 for ocean
 #1 for land
@@ -84,28 +85,33 @@ def findValidSpawnTile(levelState, i, j):
     return None
 
 def spawnUnit(levelState, origin0, origin1):
-    validPos = findValidSpawnTile(levelState, origin0, origin1)
-    unitID = int(math.copysign(abs(levelState[origin0][origin1]) + 3, levelState[origin0][origin1]))
+    newState = copy.deepcopy(levelState)
+
+    validPos = findValidSpawnTile(newState, origin0, origin1)
+    unitID = int(math.copysign(abs(newState[origin0][origin1]) + 3, newState[origin0][origin1]))
 
     if validPos != None:
-        levelState[validPos[0]][validPos[1]] = unitID
+        newState[validPos[0]][validPos[1]] = unitID
 
-    return levelState
+    return newState
 
 def incrementTurn(levelState, buildingTurnCounter):
-    for i in range(len(buildingTurnCounter)):
-        for j in range(len(buildingTurnCounter[i])):
-            if buildingTurnCounter[i][j] > 0:
-                buildingTurnCounter[i][j] += 1
-            elif buildingTurnCounter[i][j] < 0:
-                buildingTurnCounter[i][j] -= 1
+    newState = copy.deepcopy(levelState)
+    newTurnCounter = copy.deepcopy(buildingTurnCounter)
 
-            if abs(buildingTurnCounter[i][j]) > 0:
-                if abs(buildingTurnCounter[i][j]) > buildingTurnThresholds[abs(levelState[i][j]) - 2]:
-                    levelState = spawnUnit(levelState, i, j)
-                    buildingTurnCounter[i][j] = int(math.copysign(1, buildingTurnCounter[i][j]))
+    for i in range(len(newTurnCounter)):
+        for j in range(len(newTurnCounter[i])):
+            if newTurnCounter[i][j] > 0:
+                newTurnCounter[i][j] += 1
+            elif newTurnCounter[i][j] < 0:
+                newTurnCounter[i][j] -= 1
 
-    return levelState, buildingTurnCounter
+            if abs(newTurnCounter[i][j]) > 0:
+                if abs(newTurnCounter[i][j]) > buildingTurnThresholds[abs(newState[i][j]) - 2]:
+                    newState = spawnUnit(newState, i, j)
+                    newTurnCounter[i][j] = int(math.copysign(1, newTurnCounter[i][j]))
+
+    return newState, newTurnCounter
 
 def isValidMove(levelState, tiles, currPlayer):
     #Out of bounds
@@ -128,18 +134,18 @@ def isValidMove(levelState, tiles, currPlayer):
         return False
 
     #Can't move into your own unit or building, accounts for the ground being positive
-    if levelState[tiles[1][0]][tiles[1][1]] == int(math.copysign(levelState[tiles[1][0]][tiles[1][1]], currPlayer)) and levelState[tiles[1][0]][tiles[1][1]] != 1 and (tiles[1][0] - tiles[0][0]) + (tiles[1][1] - tiles[0][1]) != 0:
+    if levelState[tiles[1][0]][tiles[1][1]] == int(math.copysign(levelState[tiles[1][0]][tiles[1][1]], currPlayer)) and levelState[tiles[1][0]][tiles[1][1]] != 1 and (tiles[1][0] - tiles[0][0] != 0 or tiles[1][1] - tiles[0][1] != 0):
         return False
 
     #Can't move into something that's not ground if you're not a soldier
-    if levelState[tiles[1][0]][tiles[1][1]] != 1 and abs(levelState[tiles[0][0]][tiles[0][1]]) != 7 and (tiles[1][0] - tiles[0][0]) + (tiles[1][1] - tiles[0][1]) != 0:
+    if levelState[tiles[1][0]][tiles[1][1]] != 1 and abs(levelState[tiles[0][0]][tiles[0][1]]) != 7 and (tiles[1][0] - tiles[0][0] != 0 or tiles[1][1] - tiles[0][1] != 0):
         return False
 
     #Can't move into nothing
     if levelState[tiles[1][0]][tiles[1][1]] == 0:
         return False
     
-    if tiles[0][0] != tiles[1][0] and tiles[0][1] != tiles[1][1] and abs(levelState[tiles[0][0]][tiles[0][1]]) == 7:
+    if tiles[0][0] == tiles[1][0] and tiles[0][1] == tiles[1][1] and abs(levelState[tiles[0][0]][tiles[0][1]]) == 7:
         return False
     
     return True
@@ -164,8 +170,6 @@ def parseMove(levelState, moveStr, currPlayer):
 
         tiles[i].append(tile[:firstNum])
         tiles[i].append(tile[firstNum:])
-
-    print(tiles)
 
     col1 = tiles[0][0].upper()
     col2 = tiles[1][0].upper()
@@ -198,23 +202,26 @@ def parseMove(levelState, moveStr, currPlayer):
     return tiles
 
 def makeMove(levelState, buildingTurnCounter, move):
+    newState = copy.deepcopy(levelState)
+    newTurnCounter = copy.deepcopy(buildingTurnCounter)
+    
     unitID = levelState[move[0][0]][move[0][1]]
     moveToID = levelState[move[1][0]][move[1][1]]
 
     if abs(unitID) == 7 and abs(moveToID) == 7:
-        chance = random.uniform()
+        chance = random.uniform(0, 1)
         if chance <= attackThreshold:
-            levelState[move[0][0]][move[0][1]] = 1
-            levelState[move[1][0]][move[1][1]] = unitID
+            newState[move[0][0]][move[0][1]] = 1
+            newState[move[1][0]][move[1][1]] = unitID
         else:
-            levelState[move[0][0]][move[0][1]] = 1
+            newState[move[0][0]][move[0][1]] = 1
     elif move[0][0] == move[1][0] and move[0][1] == move[1][1]:
-        levelState[move[0][0]][move[0][1]] = int(math.copysign(abs(unitID) - 2, unitID))
-        buildingTurnCounter[move[0][0]][move[0][1]] = int(math.copysign(1, unitID))
+        newState[move[0][0]][move[0][1]] = int(math.copysign(abs(unitID) - 2, unitID))
+        newTurnCounter[move[0][0]][move[0][1]] = int(math.copysign(1, unitID))
     else:
-        levelState[move[0][0]][move[0][1]] = 1
-        levelState[move[1][0]][move[1][1]] = unitID
-        buildingTurnCounter[move[0][0]][move[0][1]] = 0
-        buildingTurnCounter[move[1][0]][move[1][1]] = 0
+        newState[move[0][0]][move[0][1]] = 1
+        newState[move[1][0]][move[1][1]] = unitID
+        newTurnCounter[move[0][0]][move[0][1]] = 0
+        newTurnCounter[move[1][0]][move[1][1]] = 0
     
-    return levelState, buildingTurnCounter
+    return newState, newTurnCounter
