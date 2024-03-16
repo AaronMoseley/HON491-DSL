@@ -12,7 +12,7 @@ class WarGamesAI(nn.Module):
 
         self.device = device
         self.unet = ResUNet().to(device)
-        self.finalEncoder = ResNetEncoder(inlayers=10, block=BasicBlock, layers=[2, 2, 2, 2], num_classes=3).to(device)
+        self.finalEncoder = ResNetEncoder(inlayers=10, block=BasicBlock, layers=[2, 2, 2], num_classes=3).to(device)
 
     def forward(self, levelState, currPlayer):
         signs = torch.mul(torch.from_numpy(np.sign(levelState)), currPlayer).to(self.device)
@@ -53,12 +53,12 @@ class ResUNet(nn.Module):
     def __init__(self) -> None:
         super().__init__()
 
-        self.encoder = ResNetEncoder(inlayers=7, block=BasicBlock, layers=[2, 2, 2, 2], num_classes=3)
+        self.encoder = ResNetEncoder(inlayers=7, block=BasicBlock, layers=[2, 2, 2], num_classes=3)
         self.decoder = ResDecoder(outlayers=3)
 
     def forward(self, x):
-        _, conv5, conv4, conv3, conv2, conv1 = self.encoder(x)
-        outSeg = self.decoder(conv5, conv4, conv3, conv2, conv1)
+        _, conv4, conv3, conv2, conv1 = self.encoder(x)
+        outSeg = self.decoder(conv4, conv3, conv2, conv1)
 
         return outSeg
 
@@ -79,7 +79,6 @@ class ResDecoder(nn.Module):
 
         self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
 
-        self.dconv_up4 = block(512 + 256, 256)
         self.dconv_up3 = block(256 + 128, 128)
         self.dconv_up2 = block(128 + 64, 64)
         self.dconv_up1 = block(64 + 32, 32)
@@ -88,12 +87,8 @@ class ResDecoder(nn.Module):
         self.sigm = nn.Sigmoid()
         
         
-    def forward(self, conv5, conv4, conv3, conv2, conv1):
-        x = self.upsample(conv5)        
-        x = torch.cat([x, conv4], dim=1)
-
-        x = self.dconv_up4(x)
-        x = self.upsample(x)        
+    def forward(self, conv4, conv3, conv2, conv1):
+        x = self.upsample(conv4) 
         x = torch.cat([x, conv3], dim=1)       
 
         x = self.dconv_up3(x)
@@ -259,8 +254,8 @@ class ResNetEncoder(nn.Module):
         if replace_stride_with_dilation is None:
             # each element in the tuple indicates if we should replace
             # the 2x2 stride with a dilated convolution instead
-            replace_stride_with_dilation = [False, False, False]
-        if len(replace_stride_with_dilation) != 3:
+            replace_stride_with_dilation = [False, False]
+        if len(replace_stride_with_dilation) != 2:
             raise ValueError(
                 "replace_stride_with_dilation should be None "
                 f"or a 3-element tuple, got {replace_stride_with_dilation}"
@@ -274,9 +269,8 @@ class ResNetEncoder(nn.Module):
         self.layer1 = self._make_layer(block, 64, layers[0])
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1])
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2, dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Sequential(nn.Linear(512 * block.expansion, num_classes), nn.Sigmoid())
+        self.fc = nn.Sequential(nn.Linear(256 * block.expansion, num_classes), nn.Sigmoid())
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -345,10 +339,9 @@ class ResNetEncoder(nn.Module):
         out2 = self.layer1(x)
         out3 = self.layer2(out2)
         out4 = self.layer3(out3)
-        out5 = self.layer4(out4)
 
-        x = self.avgpool(out5)
+        x = self.avgpool(out4)
         x = torch.flatten(x, 1)
         x = self.fc(x)
 
-        return x, out5, out4, out3, out2, out1
+        return x, out4, out3, out2, out1
