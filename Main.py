@@ -118,7 +118,7 @@ while True:
                 print("AI Move: " + str(parsedMove))
             else:
                 print("No move made.")
-            _ = input("Type anything to continue. ")
+            #_ = input("Type anything to continue. ")
 
     winner = LevelManager.checkWinCond(levelState)
     if winner == 1:

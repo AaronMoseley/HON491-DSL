@@ -109,7 +109,9 @@ def incrementTurn(levelState, buildingTurnCounter):
             if abs(newTurnCounter[i][j]) > 0:
                 if abs(newTurnCounter[i][j]) > buildingTurnThresholds[abs(newState[i][j]) - 2]:
                     newState = spawnUnit(newState, i, j)
-                    newTurnCounter[i][j] = int(math.copysign(1, newTurnCounter[i][j]))
+
+                    if newTurnCounter[i][j] != 0:
+                        newTurnCounter[i][j] = int(math.copysign(1, newTurnCounter[i][j]))
 
     return newState, newTurnCounter
 
