@@ -9,7 +9,7 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 model = RLModel.WarGamesAI(device).to(device)
 
 levelLoc = "Levels/Testing/"
-levelName = "TestLevel3.txt"
+levelName = "TestLevel1.txt"
 
 numEpochs = 2
 learnRate = 0.001
@@ -47,13 +47,14 @@ for epoch in range(numEpochs):
         if currPlayer == -1:
             turnCounter += 1
 
-        if currPlayer == modelPlayer:
-            parsedMove = model(levelState, modelPlayer)
-        else:
-            if opposingPlayerType == 1:
-                parsedMove = MinMaxAI.chooseMove(levelState, buildingTurnCounter, currPlayer, stateBudget=1000)
+        if len(MinMaxAI.getValidMoves(levelState, currPlayer)) > 0:
+            if currPlayer == modelPlayer:
+                parsedMove = model(levelState, modelPlayer)
             else:
-                parsedMove = mutatedNetwork(levelState, currPlayer)
+                if opposingPlayerType == 1:
+                    parsedMove = MinMaxAI.chooseMove(levelState, buildingTurnCounter, currPlayer, stateBudget=1000)
+                else:
+                    parsedMove = mutatedNetwork(levelState, currPlayer)
 
         if parsedMove != None:
             levelState, buildingTurnCounter = LevelManager.makeMove(levelState, buildingTurnCounter, parsedMove)

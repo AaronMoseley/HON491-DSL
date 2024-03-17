@@ -5,6 +5,7 @@ import torchvision.models
 from typing import Type, Union, Optional, Callable, List 
 import numpy as np
 import MinMaxAI
+import copy
 
 class WarGamesAI(nn.Module):
     def __init__(self, device) -> None:
@@ -15,8 +16,13 @@ class WarGamesAI(nn.Module):
         self.finalEncoder = ResNetEncoder(inlayers=10, block=BasicBlock, layers=[2, 2, 2], num_classes=3).to(device)
 
     def forward(self, levelState, currPlayer):
-        signs = torch.mul(torch.from_numpy(np.sign(levelState)), currPlayer).to(self.device)
-        absVal = np.absolute(levelState)
+        newState = copy.deepcopy(levelState)
+
+        newState = np.asarray(newState)
+        newState = np.pad(newState, ((0, max(0, 32 - len(newState))), (0, max(0, 32 - len(newState[0])))), mode="constant", constant_values=(0))
+
+        signs = torch.mul(torch.from_numpy(np.sign(newState)), currPlayer).to(self.device)
+        absVal = np.absolute(newState)
 
         levelStateInput = torch.from_numpy((absVal >= 1).astype(int)).to(self.device).unsqueeze(dim=0)
 
@@ -28,7 +34,7 @@ class WarGamesAI(nn.Module):
         finalInput = torch.cat((unetOutput, levelStateInput.unsqueeze(dim=0)), dim=1)
         finalOutput = self.finalEncoder(finalInput)[0].squeeze(dim=0).detach().cpu().tolist()
 
-        validMoves = MinMaxAI.getValidMoves(levelState, currPlayer)
+        validMoves = MinMaxAI.getValidMoves(newState, currPlayer)
         priority = np.argsort(finalOutput)
 
         for piece in reversed(priority):
@@ -36,7 +42,7 @@ class WarGamesAI(nn.Module):
             maxInd = -1
 
             for i, move in enumerate(validMoves):
-                if (piece + 5) * currPlayer != levelState[move[0][0]][move[0][1]]:
+                if (piece + 5) * currPlayer != newState[move[0][0]][move[0][1]]:
                     continue
 
                 if unetOutput[0][piece][move[1][0]][move[1][1]] > maxPriority:
