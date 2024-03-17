@@ -7,11 +7,9 @@ import copy
 friendlyUnitValues = [20, 10, 15, 5, 11, 20]
 enemyUnitValues = [-30, -15, -20, -5, -10, -20]
 
-def chooseMove(levelState, buildingTurnCounter, currPlayer):
+def chooseMove(levelState, buildingTurnCounter, currPlayer, stateBudget=1000):
     if len(getValidMoves(levelState, currPlayer)) == 0:
         return None
-    
-    stateBudget = 10000
     
     bestMove = None
     maxUtil = -float("inf")

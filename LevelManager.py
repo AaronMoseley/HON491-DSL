@@ -10,6 +10,8 @@ import copy
 #settlement, town, barracks
 buildingTurnThresholds = [14, 12, 10]
 
+unitCap = 30
+
 #chance the attacking solider wins against an enemy solider
 attackThreshold = 0.75
 
@@ -19,7 +21,7 @@ def swapPositions(lis, pos1, pos2):
     lis[pos2]=temp
     return lis
 
-def readLevel(file):
+def readLevel(file, spawnUnits=True):
     f = open(file, "r")
 
     result = []
@@ -42,10 +44,11 @@ def readLevel(file):
         result.append(currArr)
         buildingTurnCounter.append(turnCounterArr)
     
-    for i in range(len(result)):
-        for j in range(len(result[i])):
-            if result[i][j] == 2 or result[i][j] == -2:
-                result = spawnUnit(result, i, j)
+    if spawnUnits:
+        for i in range(len(result)):
+            for j in range(len(result[i])):
+                if result[i][j] == 2 or result[i][j] == -2:
+                    result = spawnUnit(result, i, j)
 
     return result, buildingTurnCounter
 
@@ -72,11 +75,11 @@ def findValidSpawnTile(levelState, i, j):
     offsets = [0, -1, 1]
 
     for k in offsets:
-        if i + k > len(levelState) or i + k < 0:
+        if i + k >= len(levelState) or i + k < 0:
             continue
 
         for l in offsets:
-            if j + l > len(levelState[i + k]) or j + l < 0:
+            if j + l >= len(levelState[i + k]) or j + l < 0:
                 continue
 
             if(levelState[i + k][j + l] == 1):
@@ -86,6 +89,16 @@ def findValidSpawnTile(levelState, i, j):
 
 def spawnUnit(levelState, origin0, origin1):
     newState = copy.deepcopy(levelState)
+
+    numUnits = 0
+    player = math.copysign(1, newState[origin0][origin1])
+    for i in range(len(newState)):
+        for j in range(len(newState[i])):
+            if abs(newState[i][j]) > 1 and player == math.copysign(1, newState[i][j]):
+                numUnits += 1
+
+    if numUnits >= unitCap:
+        return newState
 
     validPos = findValidSpawnTile(newState, origin0, origin1)
     unitID = int(math.copysign(abs(newState[origin0][origin1]) + 3, newState[origin0][origin1]))

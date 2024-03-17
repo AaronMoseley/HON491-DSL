@@ -1,5 +1,6 @@
 import math
 import os
+import LevelManager
 
 #Positive for player 1
 #Negative for player 2
@@ -24,6 +25,22 @@ chars = [" ", ".", "♔", "♕", "♖", "♙", "♗", "♘"]
 def displayLevel(levelState, turnCounter, clear):
     if clear:
         os.system("cls")
+
+    player1Units = 0
+    for i in range(len(levelState)):
+        for j in range(len(levelState[i])):
+            if abs(levelState[i][j]) > 1 and math.copysign(1, levelState[i][j]) == 1:
+                player1Units += 1
+
+    player2Units = 0
+    for i in range(len(levelState)):
+        for j in range(len(levelState[i])):
+            if abs(levelState[i][j]) > 1 and math.copysign(1, levelState[i][j]) == -1:
+                player2Units += 1
+
+    print("Player 1 Units: " + str(player1Units) + " / " + str(LevelManager.unitCap))
+    print("Player 2 Units: " + str(player2Units) + " / " + str(LevelManager.unitCap))
+
     print("Turn: " + str(turnCounter + 1))
     rows = len(levelState)
     cols = len(levelState[0])

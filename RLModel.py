@@ -18,7 +18,7 @@ class WarGamesAI(nn.Module):
         signs = torch.mul(torch.from_numpy(np.sign(levelState)), currPlayer).to(self.device)
         absVal = np.absolute(levelState)
 
-        levelStateInput = torch.mul(torch.from_numpy((absVal == 1).astype(int)).to(self.device), signs).unsqueeze(dim=0)
+        levelStateInput = torch.from_numpy((absVal >= 1).astype(int)).to(self.device).unsqueeze(dim=0)
 
         for i in range(6):
             levelStateInput = torch.cat((levelStateInput, torch.mul(torch.from_numpy((absVal == i + 2).astype(int)).to(self.device), signs).unsqueeze(dim=0)))
