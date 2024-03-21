@@ -13,58 +13,100 @@ class WarGamesAI(nn.Module):
 
         self.device = device
         self.unet = ResUNet().to(device)
-        self.finalEncoder = ResNetEncoder(inlayers=10, block=BasicBlock, layers=[2, 2, 2], num_classes=3).to(device)
+        self.finalEncoder = ResNetEncoder(inlayers=7, block=BasicBlock, layers=[2, 2, 2], num_classes=2).to(device)
 
-    def forward(self, levelState, currPlayer):
-        newState = copy.deepcopy(levelState)
+    def forward(self, levelStates, currPlayer, outputMove=True):
+        modelInput = None
+        for levelState in levelStates:
+            newState = copy.deepcopy(levelState)
 
-        newState = np.asarray(newState)
-        newState = np.pad(newState, ((0, max(0, 32 - len(newState))), (0, max(0, 32 - len(newState[0])))), mode="constant", constant_values=(0))
+            newState = np.asarray(newState)
+            newState = np.pad(newState, ((0, max(0, 8 - len(newState))), (0, max(0, 8 - len(newState[0])))), mode="constant", constant_values=(0))
 
-        signs = torch.mul(torch.from_numpy(np.sign(newState)), currPlayer).to(self.device)
-        absVal = np.absolute(newState)
+            signs = torch.mul(torch.from_numpy(np.sign(newState)), currPlayer).to(self.device)
+            absVal = np.absolute(newState)
 
-        levelStateInput = torch.from_numpy((absVal >= 1).astype(int)).to(self.device).unsqueeze(dim=0)
+            levelStateInput = torch.from_numpy((absVal >= 1).astype(int)).to(self.device).unsqueeze(dim=0)
 
-        for i in range(6):
-            levelStateInput = torch.cat((levelStateInput, torch.mul(torch.from_numpy((absVal == i + 2).astype(int)).to(self.device), signs).unsqueeze(dim=0)))
-
-        unetOutput = self.unet(levelStateInput.float().unsqueeze(dim=0))
-
-        finalInput = torch.cat((unetOutput, levelStateInput.unsqueeze(dim=0)), dim=1)
-        finalOutput = self.finalEncoder(finalInput)[0].squeeze(dim=0).detach().cpu().tolist()
-
-        validMoves = MinMaxAI.getValidMoves(newState, currPlayer)
-        priority = np.argsort(finalOutput)
-
-        for piece in reversed(priority):
-            maxPriority = -float("inf")
-            maxInd = -1
-
-            for i, move in enumerate(validMoves):
-                if (piece + 5) * currPlayer != newState[move[0][0]][move[0][1]]:
+            for i in range(6):
+                if i in [0, 3]:
                     continue
 
-                if unetOutput[0][piece][move[1][0]][move[1][1]] > maxPriority:
-                    maxPriority = unetOutput[0][piece][move[1][0]][move[1][1]]
-                    maxInd = i
+                levelStateInput = torch.cat((levelStateInput, torch.mul(torch.from_numpy((absVal == i + 2).astype(int)).to(self.device), signs).unsqueeze(dim=0)))
 
-            if maxInd >= 0:
-                return validMoves[maxInd]
-            
-        print("error has occured")
-        return None
+            if modelInput == None:
+                modelInput = levelStateInput.unsqueeze(0)
+            else:
+                modelInput = torch.cat((modelInput, levelStateInput.unsqueeze(0)))
+
+        unetOutput = self.unet(modelInput.float())
+
+        finalInput = None
+        for i, batchEl in enumerate(unetOutput):
+            if finalInput == None:
+                finalInput = torch.cat((batchEl, modelInput[i]), dim=0).unsqueeze(0)
+            else:
+                finalInput = torch.cat((finalInput, torch.cat((batchEl, modelInput[i]), dim=0).unsqueeze(0)))
+
+        finalOutput = self.finalEncoder(finalInput)[0].detach().cpu().tolist()
+
+        result = None
+
+        for i, newState in enumerate(levelStates):
+            validMoves = MinMaxAI.getValidMoves(newState, currPlayer)
+            priority = np.argsort(finalOutput[i])
+
+            if len(validMoves) == 0:
+                if result == None:
+                    if outputMove:
+                        result = [None]
+                    else:
+                        result = torch.zeros(1)
+                else:
+                    if outputMove:
+                        result.append(None)
+                    else:
+                        result = torch.cat((result, torch.zeros(1)))
+
+                continue
+
+            for piece in reversed(priority):
+                maxPriority = -float("inf")
+                maxInd = -1
+
+                for j, move in enumerate(validMoves):
+                    if (piece + 6) * currPlayer != newState[move[0][0]][move[0][1]]:
+                        continue
+
+                    if unetOutput[i][piece][move[1][0]][move[1][1]] > maxPriority:
+                        maxPriority = unetOutput[i][piece][move[1][0]][move[1][1]]
+                        maxInd = j
+
+                if maxInd >= 0:
+                    if outputMove:
+                        if result == None:
+                            result = [validMoves[maxInd]]
+                        else:
+                            result.append(validMoves[maxInd])
+                    else:
+                        if result == None:
+                            result = torch.Tensor(finalOutput[i][piece] * unetOutput[i][piece][validMoves[maxInd][1][0]][validMoves[maxInd][1][1]]).unsqueeze(0)
+                        else:
+                            result = torch.cat((result, torch.Tensor(unetOutput[i][piece][validMoves[maxInd][1][0]][validMoves[maxInd][1][1]]).unsqueeze(0)))
+                    break
+
+        return result
 
 class ResUNet(nn.Module):
     def __init__(self) -> None:
         super().__init__()
 
-        self.encoder = ResNetEncoder(inlayers=7, block=BasicBlock, layers=[2, 2, 2], num_classes=3)
-        self.decoder = ResDecoder(outlayers=3)
+        self.encoder = ResNetEncoder(inlayers=5, block=BasicBlock, layers=[2, 2, 2], num_classes=2)
+        self.decoder = ResDecoder(outlayers=2)
 
     def forward(self, x):
-        _, conv4, conv3, conv2, conv1 = self.encoder(x)
-        outSeg = self.decoder(conv4, conv3, conv2, conv1)
+        _, conv2, conv1 = self.encoder(x)
+        outSeg = self.decoder(conv2, conv1)
 
         return outSeg
 
@@ -85,24 +127,14 @@ class ResDecoder(nn.Module):
 
         self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
 
-        self.dconv_up3 = block(256 + 128, 128)
-        self.dconv_up2 = block(128 + 64, 64)
         self.dconv_up1 = block(64 + 32, 32)
         self.conv_last = nn.Conv2d(32, outlayers, 1)
 
         self.sigm = nn.Sigmoid()
         
         
-    def forward(self, conv4, conv3, conv2, conv1):
-        x = self.upsample(conv4) 
-        x = torch.cat([x, conv3], dim=1)       
-
-        x = self.dconv_up3(x)
-        x = self.upsample(x)        
-        x = torch.cat([x, conv2], dim=1)
-
-        x = self.dconv_up2(x)
-        x = self.upsample(x)        
+    def forward(self, conv2, conv1):
+        x = self.upsample(conv2)        
         x = torch.cat([x, conv1], dim=1) 
 
         x = self.dconv_up1(x)
@@ -260,8 +292,8 @@ class ResNetEncoder(nn.Module):
         if replace_stride_with_dilation is None:
             # each element in the tuple indicates if we should replace
             # the 2x2 stride with a dilated convolution instead
-            replace_stride_with_dilation = [False, False]
-        if len(replace_stride_with_dilation) != 2:
+            replace_stride_with_dilation = [False]
+        if len(replace_stride_with_dilation) != 1:
             raise ValueError(
                 "replace_stride_with_dilation should be None "
                 f"or a 3-element tuple, got {replace_stride_with_dilation}"
@@ -273,10 +305,8 @@ class ResNetEncoder(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2, dilate=replace_stride_with_dilation[0])
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2, dilate=replace_stride_with_dilation[1])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Sequential(nn.Linear(256 * block.expansion, num_classes), nn.Sigmoid())
+        self.fc = nn.Sequential(nn.Linear(64 * block.expansion, num_classes), nn.Sigmoid())
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -343,11 +373,9 @@ class ResNetEncoder(nn.Module):
         x = self.maxpool(out1)
 
         out2 = self.layer1(x)
-        out3 = self.layer2(out2)
-        out4 = self.layer3(out3)
 
-        x = self.avgpool(out4)
+        x = self.avgpool(out2)
         x = torch.flatten(x, 1)
         x = self.fc(x)
 
-        return x, out4, out3, out2, out1
+        return x, out2, out1

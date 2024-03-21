@@ -6,7 +6,7 @@ noise2 = PerlinNoise(octaves=6)
 noise3 = PerlinNoise(octaves=12)
 noise4 = PerlinNoise(octaves=24)
 
-xpix, ypix = 32, 32
+xpix, ypix = 8, 8
 pic = []
 for i in range(xpix):
     row = []
@@ -19,7 +19,7 @@ for i in range(xpix):
         row.append(noise_val)
     pic.append(row)
 
-threshold = -0.15
+threshold = -0.2
 newPic = []
 for i in range(xpix):
     row = []

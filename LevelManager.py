@@ -8,12 +8,12 @@ import copy
 #3 for player 2 start
 
 #settlement, town, barracks
-buildingTurnThresholds = [14, 12, 10]
+buildingTurnThresholds = [20, 16, 10]
 
-unitCap = 30
+unitCap = 10
 
 #chance the attacking solider wins against an enemy solider
-attackThreshold = 0.75
+attackThreshold = 1
 
 def swapPositions(lis, pos1, pos2):
     temp=lis[pos1]
@@ -31,15 +31,18 @@ def readLevel(file, spawnUnits=True):
         turnCounterArr = []
         for char in line:
             if char == "3":
-                currArr.append(-2)
+                currArr.append(-3)
                 turnCounterArr.append(-1)
-            elif char.isdigit():
-                currArr.append(int(char))
-
-                if char == "2":
-                    turnCounterArr.append(1)
+            elif char == "2":
+                currArr.append(3)
+                turnCounterArr.append(1)
+            elif char.isnumeric():
+                if char == "1":
+                    currArr.append(1)
                 else:
-                    turnCounterArr.append(0)
+                    currArr.append(0)
+
+                turnCounterArr.append(0)
 
         result.append(currArr)
         buildingTurnCounter.append(turnCounterArr)
@@ -47,7 +50,7 @@ def readLevel(file, spawnUnits=True):
     if spawnUnits:
         for i in range(len(result)):
             for j in range(len(result[i])):
-                if result[i][j] == 2 or result[i][j] == -2:
+                if result[i][j] == 3 or result[i][j] == -3:
                     result = spawnUnit(result, i, j)
 
     return result, buildingTurnCounter

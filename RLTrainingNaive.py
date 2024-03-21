@@ -5,10 +5,6 @@ import LevelManager
 import torch
 import Display
 import copy
-import random
-import time
-
-random.seed(time.time())
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 model = RLModel.WarGamesAI(device).to(device)
@@ -23,7 +19,7 @@ learnRate = 0.001
 model.train()
 
 maxNumTurns = 200
-selfPlayThreshold = 100
+selfPlayThreshold = 50
 
 mutationPower = 0.1
 targetStartUnits = 10
@@ -32,13 +28,9 @@ modelSavePath = "Models/"
 modelName = "TestRLModel1"
 checkpointEpoch = 5
 
-currIterations = 0
-iterationsToResetTarget = 100
-
 maxReplayLen = 200
-batchSize = 15
+batchSize = 10
 replay = []
-replayEntry = []
 
 gamesWon = 0
 for epoch in range(numEpochs):
@@ -57,9 +49,6 @@ for epoch in range(numEpochs):
     turnCounter = 0
     currPlayer = -1
     while LevelManager.checkWinCond(levelState) == 0 and turnCounter <= maxNumTurns:
-        if currIterations >= iterationsToResetTarget:
-            targetNet.load_state_dict(model.state_dict())
-        
         currPlayer *= -1
         levelState, buildingTurnCounter = LevelManager.incrementTurn(levelState, buildingTurnCounter)
 
@@ -69,10 +58,7 @@ for epoch in range(numEpochs):
         parsedMove = None
         if len(MinMaxAI.getValidMoves(levelState, currPlayer)) > 0:
             if currPlayer == modelPlayer:
-                parsedMove = model([levelState], modelPlayer, outputMove=True)
-                if parsedMove != None:
-                    parsedMove = parsedMove[0]
-                print(parsedMove)
+                parsedMove = model(levelState, modelPlayer)
             else:
                 if opposingPlayerType == 1:
                     parsedMove = MinMaxAI.chooseMove(levelState, buildingTurnCounter, currPlayer, stateBudget=10000)
@@ -87,40 +73,14 @@ for epoch in range(numEpochs):
             
             if currPlayer == modelPlayer:
                 optimizer.zero_grad()
-                reward = RLAgentSupport.reward(newState, modelPlayer)
+                loss = RLAgentSupport.rlLoss(newState, levelState, modelPlayer)
+                loss.backward()
+                optimizer.step()
 
-                replayEntry = [levelState, parsedMove, reward]
-
-                if len(replay) == maxReplayLen:
-                    batch = []
-                    for _ in range(batchSize):
-                        batch.append(random.choice(replay))
-
-                    batchStates = [x[0] for x in batch]
-
-                    qVals = model(batchStates, modelPlayer, outputMove=False)
-
-                    batchNextStates = [x[3] for x in batch]
-
-                    targetModelResult = targetNet(batchNextStates, modelPlayer, outputMove=False)
-                    targetQvals = torch.Tensor([targetModelResult[i] + torch.Tensor(batch[i][2]).to(device) for i in range(batchSize)])
-
-                    loss = RLAgentSupport.MSELoss(qVals, targetQvals, device)
-                    
-                    loss.backward()
-                    optimizer.step()
-                    currIterations += 1
-
-                print("Game: " + str(epoch))
+                print("Gane: " + str(epoch))
                 Display.displayLevel(levelState, turnCounter, False)
-            else:
-                if len(replayEntry) > 0:
-                    replayEntry.append(newState)
-                    replay.append(copy.deepcopy(replayEntry))
-                    replayEntry = []
-
-                    if len(replay) > maxReplayLen:
-                        replay.pop(0)
+                print(loss)
+                #_ = input("Type anything to continue")
             
             levelState = copy.deepcopy(newState)
             buildingTurnCounter = copy.deepcopy(newTurnCounter)
