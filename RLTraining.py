@@ -9,6 +9,7 @@ import random
 import time
 
 random.seed(time.time())
+sigm = torch.nn.Sigmoid()
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 model = RLModel.WarGamesAI(device).to(device)
@@ -35,6 +36,7 @@ checkpointEpoch = 5
 currIterations = 0
 iterationsToResetTarget = 100
 
+minReplayLen = 25
 maxReplayLen = 200
 batchSize = 15
 replay = []
@@ -91,7 +93,7 @@ for epoch in range(numEpochs):
 
                 replayEntry = [levelState, parsedMove, reward]
 
-                if len(replay) == maxReplayLen:
+                if len(replay) >= minReplayLen:
                     batch = []
                     for _ in range(batchSize):
                         batch.append(random.choice(replay))
@@ -103,7 +105,7 @@ for epoch in range(numEpochs):
                     batchNextStates = [x[3] for x in batch]
 
                     targetModelResult = targetNet(batchNextStates, modelPlayer, outputMove=False)
-                    targetQvals = torch.Tensor([targetModelResult[i] + torch.Tensor(batch[i][2]).to(device) for i in range(batchSize)])
+                    targetQvals = torch.Tensor([sigm(targetModelResult[i] + torch.Tensor(batch[i][2]).to(device)) for i in range(batchSize)])
 
                     loss = RLAgentSupport.MSELoss(qVals, targetQvals, device)
                     

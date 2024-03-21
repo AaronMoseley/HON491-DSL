@@ -61,12 +61,12 @@ class WarGamesAI(nn.Module):
                     if outputMove:
                         result = [None]
                     else:
-                        result = torch.zeros(1)
+                        result = torch.zeros(1).to(self.device)
                 else:
                     if outputMove:
                         result.append(None)
                     else:
-                        result = torch.cat((result, torch.zeros(1)))
+                        result = torch.cat((result, torch.zeros(1).to(self.device)))
 
                 continue
 
@@ -90,9 +90,9 @@ class WarGamesAI(nn.Module):
                             result.append(validMoves[maxInd])
                     else:
                         if result == None:
-                            result = torch.Tensor(finalOutput[i][piece] * unetOutput[i][piece][validMoves[maxInd][1][0]][validMoves[maxInd][1][1]]).unsqueeze(0)
+                            result = torch.Tensor(finalOutput[i][piece] * unetOutput[i][piece][validMoves[maxInd][1][0]][validMoves[maxInd][1][1]]).unsqueeze(0).to(self.device)
                         else:
-                            result = torch.cat((result, torch.Tensor(unetOutput[i][piece][validMoves[maxInd][1][0]][validMoves[maxInd][1][1]]).unsqueeze(0)))
+                            result = torch.cat((result, torch.Tensor(unetOutput[i][piece][validMoves[maxInd][1][0]][validMoves[maxInd][1][1]]).unsqueeze(0))).to(self.device)
                     break
 
         return result

@@ -72,7 +72,9 @@ def reward(levelState, currPlayer):
             else:
                 result += enemyUnitValues[abs(tile) - 2]
 
-    return result
+    sigm = torch.nn.Sigmoid()
+
+    return sigm(result)
 
 def randomizeState(levelState, buildingTurnCounter, addUnitProb):
     newState = copy.deepcopy(levelState)
