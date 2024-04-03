@@ -6,11 +6,23 @@ import os
 import sys
 import random
 import time
+import NewRLModel
+import torch
+import copy
 
 os.chdir(os.path.dirname(os.path.abspath(sys.argv[0])))
 os.system("cls")
 
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+modelLoc = "Models/TestRLModel10Epoch80"
+model = NewRLModel.MinMaxWarGamesAI(device)
+model.load_state_dict(torch.load(modelLoc))
+model.eval()
+
 levelLoc = ""
+
+modelPlayer = 1
 
 testing = False
 if testing:
@@ -31,30 +43,13 @@ while True:
         userIn = input()
 
     #0: user, 1: min-max, 2: reinforcement learning, 3: random
-    userTypes = [0, 0]
-    if int(userIn) == 11:
+    userTypes = []
+    if userIn == "help":
         MenuManager.printHelpMenu()
         userIn = input()
         continue
     else:
-        if int(userIn) == 2:
-            userTypes = [0, 3]
-        elif int(userIn) == 3:
-            userTypes = [0, 1]
-        elif int(userIn) == 4:
-            userTypes = [0, 2]
-        elif int(userIn) == 5:
-            userTypes = [3, 3]
-        elif int(userIn) == 6:
-            userTypes = [3, 1]
-        elif int(userIn) == 7:
-            userTypes = [3, 2]
-        elif int(userIn) == 8:
-            userTypes = [1, 1]
-        elif int(userIn) == 9:
-            userTypes = [1, 2]
-        elif int(userIn) == 10:
-            userTypes = [2, 2]
+        userTypes = [int(userIn.split()[0]), int(userIn.split()[1])]
 
     print("\nAvailable Levels: ")
     print(*os.listdir(levelLoc), sep=", ")
@@ -107,13 +102,28 @@ while True:
             if playerMove.lower() == "skip":
                 continue
         elif userType == 1:
-            parsedMove = MinMaxAI.chooseMove(levelState, buildingTurnCounter, currPlayer, 10000)
+            parsedMove = MinMaxAI.chooseMove(levelState, buildingTurnCounter, currPlayer, 1000)
         elif userType == 2:
-            parsedMove = MinMaxAI.getValidMoves(levelState, currPlayer)
-            if len(parsedMove) == 0:
-                parsedMove = None
+            if currPlayer == 1:
+                parsedMove = model([levelState], [buildingTurnCounter], modelPlayer, returnMove=True, stateBudget=1000)[0]
             else:
-                parsedMove = parsedMove[0]
+                reverseState = copy.deepcopy(levelState)
+                reverseState.reverse()
+
+                reverseTurnCounter = copy.deepcopy(buildingTurnCounter)
+                reverseTurnCounter.reverse()
+
+                for i in range(len(reverseState)):
+                    for j in range(len(reverseState[i])):
+                        if abs(reverseState[i][j]) > 1:
+                            reverseState[i][j] *= -1
+                            reverseTurnCounter[i][j] *= -1
+
+                parsedMove = model([reverseState], [reverseTurnCounter], modelPlayer, returnMove=True, stateBudget=1000)[0]
+
+                if parsedMove != None:
+                    parsedMove[0][0] = 7 - parsedMove[0][0]
+                    parsedMove[1][0] = 7 - parsedMove[1][0]
         elif userType == 3:
             random.seed(time.time())
             

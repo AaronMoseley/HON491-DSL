@@ -8,7 +8,8 @@ import copy
 #3 for player 2 start
 
 #settlement, town, barracks
-buildingTurnThresholds = [20, 16, 10]
+buildingTurnThresholds = [20, 12, 8]
+buildingTurnLimits = [-1, 60, 16]
 
 unitCap = 10
 
@@ -123,11 +124,16 @@ def incrementTurn(levelState, buildingTurnCounter):
                 newTurnCounter[i][j] -= 1
 
             if abs(newTurnCounter[i][j]) > 0:
-                if abs(newTurnCounter[i][j]) > buildingTurnThresholds[abs(newState[i][j]) - 2]:
-                    newState = spawnUnit(newState, i, j)
+                try:
+                    if abs(newTurnCounter[i][j]) % buildingTurnThresholds[abs(newState[i][j]) - 2] == 0:
+                        newState = spawnUnit(newState, i, j)
 
-                    if newTurnCounter[i][j] != 0:
-                        newTurnCounter[i][j] = int(math.copysign(1, newTurnCounter[i][j]))
+                    if abs(newTurnCounter[i][j]) >= buildingTurnLimits[abs(newState[i][j]) - 2]:
+                        newTurnCounter[i][j] = 0
+                        newState[i][j] = 1
+                except:
+                    newTurnCounter[i][j] = 0
+                    newState[i][j] = 1
 
     return newState, newTurnCounter
 

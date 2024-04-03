@@ -15,14 +15,13 @@ def chooseMove(levelState, buildingTurnCounter, currPlayer, stateBudget=1000):
         return None
     
     random.seed(time.time())
-
     random.shuffle(validMoves)
 
     for i in range(len(validMoves)):
         if isCreateOrCapture(levelState, validMoves[i]):
             validMoves.insert(0, validMoves.pop(i))
 
-    currDepth = 4
+    currDepth = 2
 
     finalMove = None
 
@@ -52,6 +51,7 @@ def chooseMove(levelState, buildingTurnCounter, currPlayer, stateBudget=1000):
             finalMove = bestMove
 
     if finalMove == None:
+        #return validMoves[0]
         return random.choice(validMoves)
 
     return finalMove
@@ -61,7 +61,7 @@ def minimax(currState, currTurnCounter, currDepth, maxDepth, isMaximizing, alpha
         return None, -1
     
     if LevelManager.checkWinCond(currState) != 0:
-        return (float("inf"), stateBudget - 1) if startingPlayer == math.copysign(startingPlayer, LevelManager.checkWinCond(currState)) else (-float("inf"), stateBudget - 1)
+        return (float("inf"), stateBudget - 1) if startingPlayer == math.copysign(startingPlayer, LevelManager.checkWinCond(currState)) else (float("-inf"), stateBudget - 1)
     
     if currDepth >= maxDepth:
         return getValueOfState(currState, startingPlayer), stateBudget - 1
@@ -74,7 +74,7 @@ def minimax(currState, currTurnCounter, currDepth, maxDepth, isMaximizing, alpha
         newState, newTurnCounter = LevelManager.incrementTurn(newState, newTurnCounter)
         return minimax(newState, newTurnCounter, currDepth, maxDepth, not isMaximizing, alpha, beta, currPlayer * -1, startingPlayer, stateBudget - 1)
     
-    random.shuffle(validMoves)
+    #random.shuffle(validMoves)
 
     for i in range(len(validMoves)):
         if isCreateOrCapture(currState, validMoves[i]):

@@ -8,8 +8,11 @@ import torch
 #friendlyUnitValues = [0.4, 0.2, 0.35, 0.1, 0.15, 0.3]
 #enemyUnitValues = [-0.55, -0.25, -0.4, -0.15, -0.15, -0.35]
 
-friendlyUnitValues = [0, 0.4, 0.3, 0, 0.2, 0.3]
-enemyUnitValues = [0, -0.3, -0.4, 0, -0.2, -0.3]
+#friendlyUnitValues = [0, 0.6, 0.3, 0, 0.2, 0.25]
+#enemyUnitValues = [0, -0.5, -0.4, 0, -0.1, -0.3]
+
+friendlyUnitValues = [0, 9, 6, 0, 4, 3]
+enemyUnitValues = [0, -9, -6, 0, -4, -3]
 
 def MSELoss(actual, target, device):
     loss = torch.zeros(1).to(device)
@@ -21,12 +24,11 @@ def MSELoss(actual, target, device):
 
     return loss
 
-"""
-def rlLoss(currState, prevState, currPlayer):
-    lostGameVal = 1
-
+def reward(currState, prevState, currPlayer):
+    gameEndVal = 100
+    
     if LevelManager.checkWinCond(currState) != 0:
-        return 0 if currPlayer == math.copysign(currPlayer, LevelManager.checkWinCond(currState)) else lostGameVal
+        return torch.tensor(gameEndVal, dtype=torch.int8) if currPlayer == math.copysign(currPlayer, LevelManager.checkWinCond(currState)) else torch.tensor(-gameEndVal, dtype=torch.int8)
     
     prevUtil = torch.zeros(1)
     for row in prevState:
@@ -51,11 +53,9 @@ def rlLoss(currState, prevState, currPlayer):
                 currUtil += enemyUnitValues[abs(tile) - 2]
 
     sigm = torch.nn.Sigmoid()
-    result = sigm(-(currUtil - prevUtil + 1.5))
-    result.requires_grad = True
-    return result
-"""
+    return currUtil - prevUtil
 
+"""
 def reward(levelState, currPlayer):
     if LevelManager.checkWinCond(levelState) != 0:
         return float("inf") if currPlayer == math.copysign(currPlayer, LevelManager.checkWinCond(levelState)) else -float("inf")
@@ -75,6 +75,7 @@ def reward(levelState, currPlayer):
     sigm = torch.nn.Sigmoid()
 
     return sigm(result)
+""" 
 
 def randomizeState(levelState, buildingTurnCounter, addUnitProb):
     newState = copy.deepcopy(levelState)

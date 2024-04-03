@@ -41,6 +41,7 @@ class WarGamesAI(nn.Module):
 
         unetOutput = self.unet(modelInput.float())
 
+        """
         finalInput = None
         for i, batchEl in enumerate(unetOutput):
             if finalInput == None:
@@ -49,12 +50,13 @@ class WarGamesAI(nn.Module):
                 finalInput = torch.cat((finalInput, torch.cat((batchEl, modelInput[i]), dim=0).unsqueeze(0)))
 
         finalOutput = self.finalEncoder(finalInput)[0].detach().cpu().tolist()
+        """
 
         result = None
 
         for i, newState in enumerate(levelStates):
             validMoves = MinMaxAI.getValidMoves(newState, currPlayer)
-            priority = np.argsort(finalOutput[i])
+            #priority = np.argsort(finalOutput[i])
 
             if len(validMoves) == 0:
                 if result == None:
@@ -70,30 +72,38 @@ class WarGamesAI(nn.Module):
 
                 continue
 
-            for piece in reversed(priority):
-                maxPriority = -float("inf")
-                maxInd = -1
+            #for piece in reversed(priority):
+                #maxPriority = -float("inf")
+                #maxInd = -1
 
-                for j, move in enumerate(validMoves):
-                    if (piece + 6) * currPlayer != newState[move[0][0]][move[0][1]]:
-                        continue
+            maxPriority = -float("inf")
+            maxSecondaryPriority = -float("inf")
+            maxInd = -1
 
-                    if unetOutput[i][piece][move[1][0]][move[1][1]] > maxPriority:
-                        maxPriority = unetOutput[i][piece][move[1][0]][move[1][1]]
+            for j, move in enumerate(validMoves):
+                #if (piece + 6) * currPlayer != newState[move[0][0]][move[0][1]]:
+                #    continue
+
+                if unetOutput[i][0][move[1][0]][move[1][1]] > maxPriority:
+                    maxPriority = unetOutput[i][0][move[1][0]][move[1][1]]
+                    maxSecondaryPriority = unetOutput[i][0][move[0][0]][move[0][1]]
+                    maxInd = j
+                elif unetOutput[i][0][move[1][0]][move[1][1]] == maxPriority:
+                    if unetOutput[i][0][move[0][0]][move[0][1]] > maxSecondaryPriority:
                         maxInd = j
+                        maxSecondaryPriority = unetOutput[i][0][move[0][0]][move[0][1]]
 
-                if maxInd >= 0:
-                    if outputMove:
-                        if result == None:
-                            result = [validMoves[maxInd]]
-                        else:
-                            result.append(validMoves[maxInd])
+            if maxInd >= 0:
+                if outputMove:
+                    if result == None:
+                        result = [validMoves[maxInd]]
                     else:
-                        if result == None:
-                            result = torch.Tensor(finalOutput[i][piece] * unetOutput[i][piece][validMoves[maxInd][1][0]][validMoves[maxInd][1][1]]).unsqueeze(0).to(self.device)
-                        else:
-                            result = torch.cat((result, torch.Tensor(unetOutput[i][piece][validMoves[maxInd][1][0]][validMoves[maxInd][1][1]]).unsqueeze(0))).to(self.device)
-                    break
+                        result.append(validMoves[maxInd])
+                else:
+                    if result == None:
+                        result = torch.Tensor(unetOutput[i][0][validMoves[maxInd][1][0]][validMoves[maxInd][1][1]]).unsqueeze(0).to(self.device)
+                    else:
+                        result = torch.cat((result, torch.Tensor(unetOutput[i][0][validMoves[maxInd][1][0]][validMoves[maxInd][1][1]]).unsqueeze(0))).to(self.device)
 
         return result
 
@@ -102,7 +112,7 @@ class ResUNet(nn.Module):
         super().__init__()
 
         self.encoder = ResNetEncoder(inlayers=5, block=BasicBlock, layers=[2, 2, 2, 2], num_classes=2)
-        self.decoder = ResDecoder(outlayers=2)
+        self.decoder = ResDecoder(outlayers=1)
 
     def forward(self, x):
         _, conv5, conv4, conv3, conv2, conv1 = self.encoder(x)
@@ -156,7 +166,7 @@ class ResDecoder(nn.Module):
 
         out = self.conv_last(x)
         
-        return self.sigm(out)
+        return out
     
 #From here to line 532, all code was taken from the torchvision ResNet implementation at https://pytorch.org/vision/main/_modules/torchvision/models/resnet.html
 #The only changes made are modifying the number of input channels from 3 to 1 for CT slices and returning the output from all blocks in the forward function
@@ -322,7 +332,7 @@ class ResNetEncoder(nn.Module):
         self.layer3 = self._make_stagnant_layer(block, 64, layers[2], dilate=replace_stride_with_dilation[1])
         self.layer4 = self._make_stagnant_layer(block, 64, layers[3], dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        self.fc = nn.Sequential(nn.Linear(64 * block.expansion, num_classes), nn.Sigmoid())
+        self.fc = nn.Sequential(nn.Linear(64 * block.expansion, num_classes))
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -423,7 +433,7 @@ class ResNetEncoder(nn.Module):
 
         return nn.Sequential(*layers)
     
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, useSigm=True, getConv=True) -> torch.Tensor:
         x = self.conv1(x)
         x = self.bn1(x)
         out1 = self.relu(x)
@@ -438,4 +448,11 @@ class ResNetEncoder(nn.Module):
         x = torch.flatten(x, 1)
         x = self.fc(x)
 
-        return x, out5, out4, out3, out2, out1
+        if useSigm:
+            sigm = nn.Sigmoid()
+            x = sigm(x)
+
+        if getConv:
+            return x, out5, out4, out3, out2, out1
+
+        return x

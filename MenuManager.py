@@ -1,28 +1,25 @@
 import os
 
 def validSelection(userIn):
-    if not userIn.isnumeric():
+    if len(userIn.split()) != 2:
         return False
     
-    if int(userIn) < 1 or int(userIn) > 7:
-        return False
+    for player in userIn.split():
+        if not player.isnumeric():
+            return False
+        
+        if int(player) < 0 or int(player) > 3:
+            return False
     
     return True
 
 def printMainMenu():
     os.system("cls")
-    print("Welcome to War Games. Please select from the below options. Type \"quit\" to quit.")
-    print("1. 2-Player Game")
-    print("2. Player Against Random")
-    print("3. Play Against Min-Max Search AI")
-    print("4. Play Against Reinforcement Learning AI")
-    print("5. Random vs Random")
-    print("6. Random vs Min-Max")
-    print("7. Random vs Reinforcement Learning")
-    print("8. Min-Max vs. Min-Max")
-    print("9. Min-Max vs. Reinforcement Learning")
-    print("10. Reinforcement Learning vs. Reinforcement Learning")
-    print("11. Help Menu")
+    print("Welcome to War Games. Please select the player types as \"[player1Type] [player2Type]\" from the list below. Type \"quit\" to quit and \"help\" for the help menu.")
+    print("0. Human Player")
+    print("1. Minimax Bot")
+    print("2. Reinforcement Learning Bot")
+    print("3. Random Bot")
 
 def printHelpMenu():
     os.system("cls")
