@@ -15,7 +15,7 @@ os.system("cls")
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-modelLoc = "Models/TestRLModel10Epoch80"
+modelLoc = "Models/RLModel5000BudgetEpoch100"
 model = NewRLModel.MinMaxWarGamesAI(device)
 model.load_state_dict(torch.load(modelLoc))
 model.eval()
@@ -102,10 +102,10 @@ while True:
             if playerMove.lower() == "skip":
                 continue
         elif userType == 1:
-            parsedMove = MinMaxAI.chooseMove(levelState, buildingTurnCounter, currPlayer, 1000)
+            parsedMove = MinMaxAI.chooseMove(levelState, buildingTurnCounter, currPlayer, 10000)
         elif userType == 2:
             if currPlayer == 1:
-                parsedMove = model([levelState], [buildingTurnCounter], modelPlayer, returnMove=True, stateBudget=1000)[0]
+                parsedMove = model([levelState], [buildingTurnCounter], modelPlayer, returnMove=True, stateBudget=5000)[0]
             else:
                 reverseState = copy.deepcopy(levelState)
                 reverseState.reverse()
@@ -119,7 +119,7 @@ while True:
                             reverseState[i][j] *= -1
                             reverseTurnCounter[i][j] *= -1
 
-                parsedMove = model([reverseState], [reverseTurnCounter], modelPlayer, returnMove=True, stateBudget=1000)[0]
+                parsedMove = model([reverseState], [reverseTurnCounter], modelPlayer, returnMove=True, stateBudget=5000)[0]
 
                 if parsedMove != None:
                     parsedMove[0][0] = 7 - parsedMove[0][0]

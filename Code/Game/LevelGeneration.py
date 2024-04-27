@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from perlin_noise import PerlinNoise
+import os
 
 noise1 = PerlinNoise(octaves=3)
 noise2 = PerlinNoise(octaves=6)
@@ -27,8 +28,8 @@ for i in range(xpix):
         row.append(1 if pic[i][j] > threshold else 0)
     newPic.append(row)
 
-fileLoc = "Levels/Final/"
-fileName = "Level5.txt"
+fileLoc = os.path.dirname(__file__) + "\\Levels\\Final\\Unseen\\"
+fileName = "Level7.txt"
 
 f = open(fileLoc + fileName, "w")
 for i in range(xpix):

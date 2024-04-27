@@ -8,7 +8,7 @@ import MinMaxAI
 import copy
 from RLModel import ResNetEncoder, BasicBlock
 import LevelManager
-import random
+#import random
 import time
 import math
 
@@ -17,11 +17,13 @@ class MinMaxWarGamesAI(nn.Module):
         super().__init__()
 
         self.device = device
-        self.resnet = ResNetEncoder(inlayers=2, block=BasicBlock, layers=[2, 2, 2, 2], num_classes=1).to(device)
+        self.resnet = ResNetEncoder(inlayers=6, block=BasicBlock, layers=[2, 2, 2, 2], num_classes=1).to(device)
 
     def forward(self, levelStates, buildingTurnCounters, currPlayer, returnMove=True, stateBudget=2500):
         result = []
-        
+        #trained on 1.2
+        captureBuff = 1.2
+
         for i, levelState in enumerate(levelStates):
             buildingTurnCounter = buildingTurnCounters[i]
             validMoves = MinMaxAI.getValidMoves(levelState, currPlayer)
@@ -30,9 +32,9 @@ class MinMaxWarGamesAI(nn.Module):
                 result.append(None if returnMove else 0)
                 continue
             
-            random.seed(time.time())
+            #random.seed(time.time())
 
-            random.shuffle(validMoves)
+            #random.shuffle(validMoves)
 
             for i in range(len(validMoves)):
                 if MinMaxAI.isCreateOrCapture(levelState, validMoves[i]):
@@ -43,48 +45,57 @@ class MinMaxWarGamesAI(nn.Module):
             finalMove = None
             modelInput = None
 
-            while stateBudget > 0:
-                bestUtil = -float("inf")
-                bestMove = None
-                alpha = -float("inf")
-                beta = float("inf")
+            bestUtil = -float("inf")
+            if returnMove:
+                while stateBudget > 0:
+                    bestUtil = -float("inf")
+                    bestMove = None
+                    alpha = -float("inf")
+                    beta = float("inf")
 
-                for move in validMoves:
-                    newState = copy.deepcopy(levelState)
-                    newTurnCounter = copy.deepcopy(buildingTurnCounter)
+                    for move in validMoves:
+                        newState = copy.deepcopy(levelState)
+                        newTurnCounter = copy.deepcopy(buildingTurnCounter)
 
-                    newState, newTurnCounter = LevelManager.makeMove(newState, newTurnCounter, move)
-                    newState, newTurnCounter = LevelManager.incrementTurn(newState, newTurnCounter)
+                        newState, newTurnCounter = LevelManager.makeMove(newState, newTurnCounter, move)
+                        newState, newTurnCounter = LevelManager.incrementTurn(newState, newTurnCounter)
 
-                    if returnMove:
-                        util, stateBudget = self.minimax(newState, newTurnCounter, 2, currDepth, True, alpha, beta, currPlayer * -1, currPlayer, stateBudget)
+                        util, stateBudget = self.minimax(newState, newTurnCounter, 2, currDepth, False, alpha, beta, currPlayer * -1, currPlayer, stateBudget)
 
                         if util == None or stateBudget <= -1:
                             break
+
+                        if MinMaxAI.isCreateOrCapture(levelState, move):
+                            if util > 0:
+                                util *= captureBuff
+                            else:
+                                util /= captureBuff
 
                         if util > bestUtil:
                             bestUtil = util
                             bestMove = move
                             alpha = max(alpha, bestUtil)
 
+                    if stateBudget > 0:
                         currDepth += 1
                         finalMove = bestMove
-                    else:
-                        if modelInput == None:
-                            modelInput = torch.from_numpy(np.array(newState)).unsqueeze(dim=0)
-                            modelInput = torch.cat((modelInput, torch.from_numpy(np.array(newTurnCounter)).unsqueeze(dim=0))).to(self.device).unsqueeze(dim=0)
-                        else:
-                            newInput = torch.from_numpy(np.array(newState)).unsqueeze(dim=0)
-                            newInput = torch.cat((newInput, torch.from_numpy(np.array(newTurnCounter)).unsqueeze(dim=0))).to(self.device).unsqueeze(dim=0)
-                            modelInput = torch.cat((modelInput, newInput))
+            else:
+                for move in validMoves:
+                    newState = copy.deepcopy(levelState)
+                    newTurnCounter = copy.deepcopy(buildingTurnCounter)
 
-                if not returnMove:
-                    bestUtil = torch.max(self.resnet(modelInput.float(), useSigm=False, getConv=False))
-                    break
+                    newState, newTurnCounter = LevelManager.makeMove(newState, newTurnCounter, move)
+                    newState, newTurnCounter = LevelManager.incrementTurn(newState, newTurnCounter)
+                    if modelInput == None:
+                        modelInput = self.getModelInput(newState, newTurnCounter)
+                    else:
+                        newInput = self.getModelInput(newState, newTurnCounter)
+                        modelInput = torch.cat((modelInput, newInput))
+                bestUtil = torch.max(self.resnet(modelInput.float(), useSigm=False, getConv=False))
 
             if finalMove == None and bestUtil == -float("inf"):
-                result.append(random.choice(validMoves) if returnMove else 0)
-                #result.append(validMoves[0] if returnMove else 0)
+                #result.append(random.choice(validMoves) if returnMove else 0)
+                result.append(validMoves[0] if returnMove else 0)
             else:
                 result.append(finalMove if returnMove else bestUtil)
             
@@ -93,6 +104,17 @@ class MinMaxWarGamesAI(nn.Module):
         #result = np.array(result)
         #return torch.from_numpy(result)
     
+    def getModelInput(self, currState, currTurnCounter, currPlayer=1):
+        signs = torch.mul(torch.from_numpy(np.sign(currState)), currPlayer).to(self.device)
+        absVal = np.absolute(currState)
+
+        levelStateInput = torch.from_numpy((absVal >= 1).astype(int)).to(self.device).unsqueeze(dim=0)
+        for i in [3, 4, 6, 7]:
+            levelStateInput = torch.cat((levelStateInput, torch.mul(torch.from_numpy((absVal == i).astype(int)).to(self.device), signs).unsqueeze(dim=0)))
+
+        levelStateInput = torch.cat((levelStateInput, torch.from_numpy(np.array(currTurnCounter)).unsqueeze(dim=0).to(self.device))).unsqueeze(dim=0)
+        return levelStateInput.float()
+
     def minimax(self, currState, currTurnCounter, currDepth, maxDepth, isMaximizing, alpha, beta, currPlayer, startingPlayer, stateBudget):
         if stateBudget <= 0:
             return None, -1
@@ -101,9 +123,10 @@ class MinMaxWarGamesAI(nn.Module):
             return (float("inf"), stateBudget - 1) if startingPlayer == math.copysign(startingPlayer, LevelManager.checkWinCond(currState)) else (float("-inf"), stateBudget - 1)
         
         if currDepth >= maxDepth:
-            modelInput = torch.from_numpy(np.array(currState)).unsqueeze(dim=0)
-            modelInput = torch.cat((modelInput, torch.from_numpy(np.array(currTurnCounter)).unsqueeze(dim=0))).to(self.device).unsqueeze(dim=0)
-            return self.resnet(modelInput.float(), useSigm=False, getConv=False), stateBudget - 1
+            modelInput = self.getModelInput(currState, currTurnCounter)
+            #modelInput = torch.from_numpy(np.array(currState)).unsqueeze(dim=0)
+            #modelInput = torch.cat((modelInput, torch.from_numpy(np.array(currTurnCounter)).unsqueeze(dim=0))).to(self.device).unsqueeze(dim=0)
+            return self.resnet(modelInput, useSigm=False, getConv=False), stateBudget - 1
             #return getValueOfState(currState, startingPlayer), stateBudget - 1
 
         validMoves = MinMaxAI.getValidMoves(currState, currPlayer)

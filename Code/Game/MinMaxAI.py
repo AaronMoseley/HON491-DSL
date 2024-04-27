@@ -1,12 +1,15 @@
 import LevelManager
 import math
 import copy
-import random
+#import random
 import time
 
 #settlement, town, barracks, settler, worker, soldier
 friendlyUnitValues = [0, 3, 1, 0, 0.5, 0.8]
 enemyUnitValues = [0, -2.5, -2, 0, -1, -1.5]
+
+#friendlyUnitValues = [0, 9, 6, 0, 4, 3]
+#enemyUnitValues = [0, -9, -6, 0, -4, -3]
 
 def chooseMove(levelState, buildingTurnCounter, currPlayer, stateBudget=1000):
     validMoves = getValidMoves(levelState, currPlayer)
@@ -14,14 +17,15 @@ def chooseMove(levelState, buildingTurnCounter, currPlayer, stateBudget=1000):
     if len(validMoves) == 0:
         return None
     
-    random.seed(time.time())
-    random.shuffle(validMoves)
+    #random.seed(time.time())
+    #random.shuffle(validMoves)
 
     for i in range(len(validMoves)):
         if isCreateOrCapture(levelState, validMoves[i]):
             validMoves.insert(0, validMoves.pop(i))
 
     currDepth = 2
+    captureBuff = 1.2
 
     finalMove = None
 
@@ -37,22 +41,29 @@ def chooseMove(levelState, buildingTurnCounter, currPlayer, stateBudget=1000):
             newState, newTurnCounter = LevelManager.makeMove(newState, newTurnCounter, move)
             newState, newTurnCounter = LevelManager.incrementTurn(newState, newTurnCounter)
 
-            util, stateBudget = minimax(newState, newTurnCounter, 2, currDepth, True, alpha, beta, currPlayer * -1, currPlayer, stateBudget)
+            util, stateBudget = minimax(newState, newTurnCounter, 2, currDepth, False, alpha, beta, currPlayer * -1, currPlayer, stateBudget)
 
             if util == None or stateBudget <= -1:
                 return finalMove
+
+            if isCreateOrCapture(levelState, move):
+                if util > 0:
+                    util *= captureBuff
+                else:
+                    util /= captureBuff
 
             if util > bestUtil:
                 bestUtil = util
                 bestMove = move
                 alpha = max(alpha, bestUtil)
 
+        if stateBudget > 0:
             currDepth += 1
             finalMove = bestMove
 
     if finalMove == None:
-        #return validMoves[0]
-        return random.choice(validMoves)
+        return validMoves[0]
+        #return random.choice(validMoves)
 
     return finalMove
 
@@ -170,6 +181,7 @@ def getValueOfState(levelState, currPlayer):
         return float("inf") if currPlayer == math.copysign(currPlayer, LevelManager.checkWinCond(levelState)) else -float("inf")
     
     result = 0
+    numUnits = 1
     
     for row in levelState:
         for tile in row:
@@ -180,5 +192,7 @@ def getValueOfState(levelState, currPlayer):
                 result += friendlyUnitValues[abs(tile) - 2]
             else:
                 result += enemyUnitValues[abs(tile) - 2]
+                numUnits += 1
 
-    return result
+    #return result
+    return result / numUnits

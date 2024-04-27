@@ -22,32 +22,29 @@ targetNet = NewRLModel.MinMaxWarGamesAI(device).to(device)
 
 targetNet.load_state_dict(model.state_dict())
 
-levelLoc = "Levels/Final/"
+levelLoc = os.path.dirname(__file__) + "\\Levels\\Final\\"
 #levelName = "Level1.txt"
 
-numEpochs = 1000000
-learnRate = 0.05
+numEpochs = 100
+learnRate = 0.001
 model.train()
 
-maxNumTurns = 50
+maxNumTurns = 100
 selfPlayThreshold = 25
 
 mutationPower = 0.01
 targetStartUnits = 10
 
-modelSavePath = "Models/"
-modelName = "TestRLModel10"
+modelSavePath = os.path.dirname(__file__) + "\\Models\\"
+modelName = "RLModelSelfPlay5000Budget"
 checkpointEpoch = 10
 
 currIterations = 0
-iterationsToResetTarget = 100
 
 minReplayLen = 15
 maxReplayLen = 1500
-batchSize = 5
+batchSize = 15
 replay = []
-replayEntry = []
-
 cosineAnnealingRestartEpochs = 10
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learnRate)
@@ -58,8 +55,10 @@ totalLoss = 0
 gamesWon = 0
 gamesLost = 0
 print("Beginning training")
-for epoch in range(numEpochs):
+for epoch in range(numEpochs + 1):
     levelName = random.choice(os.listdir(levelLoc))
+
+    replayEntry = []
 
     levelState, buildingTurnCounter = LevelManager.readLevel(levelLoc + levelName, spawnUnits=False)
 
@@ -77,8 +76,12 @@ for epoch in range(numEpochs):
                     buildingTurnCounter[i][j] *= -1
 
     modelPlayer = 1
-    opposingPlayerType = 1 if epoch % 2 == 0 else 2
-    #opposingPlayerType = 2
+
+    #if epoch > selfPlayThreshold:
+    #    opposingPlayerType = 1 if epoch % 2 == 0 else 2
+    #else:
+    #    opposingPlayerType = 1
+    opposingPlayerType = 2
 
     if opposingPlayerType == 2:
         #mutatedNetwork = RLModel.WarGamesAI(device).to(device)
@@ -99,7 +102,7 @@ for epoch in range(numEpochs):
         if len(MinMaxAI.getValidMoves(levelState, currPlayer)) > 0:
             if currPlayer == modelPlayer:
                 #parsedMove = model([levelState], modelPlayer, outputMove=True)
-                parsedMove = model([levelState], [buildingTurnCounter], modelPlayer, returnMove=True)
+                parsedMove = model([levelState], [buildingTurnCounter], modelPlayer, returnMove=True, stateBudget=5000)
                 if parsedMove != None:
                     parsedMove = parsedMove[0]
                 #print(parsedMove)
@@ -120,7 +123,7 @@ for epoch in range(numEpochs):
                                 reverseTurnCounter[i][j] *= -1
 
                     #parsedMove = mutatedNetwork([levelState], modelPlayer, outputMove=True)
-                    parsedMove = mutatedNetwork([reverseState], [reverseTurnCounter], modelPlayer, returnMove=True)
+                    parsedMove = mutatedNetwork([reverseState], [reverseTurnCounter], modelPlayer, returnMove=True, stateBudget=5000)
                     if parsedMove != None:
                         parsedMove = parsedMove[0]
                         if parsedMove != None:
@@ -176,7 +179,8 @@ for epoch in range(numEpochs):
                 Display.displayLevel(levelState, turnCounter, False)
             else:
                 if len(replayEntry) > 0:
-                    reward = RLAgentSupport.reward(newState, replayEntry[0], modelPlayer)
+                    #reward = RLAgentSupport.reward(newState, replayEntry[0], modelPlayer)
+                    reward = RLAgentSupport.reward(newState, modelPlayer)
                     replayEntry.append(reward)
 
                     replayEntry.append(newState)

@@ -8,10 +8,10 @@ import copy
 #3 for player 2 start
 
 #settlement, town, barracks
-buildingTurnThresholds = [20, 12, 8]
-buildingTurnLimits = [-1, 60, 16]
+buildingTurnThresholds = [-1, 12, 8]
+buildingTurnLimits = [-1, 60, 16, -1, 80, 80]
 
-unitCap = 10
+unitCap = 1000000
 
 #chance the attacking solider wins against an enemy solider
 attackThreshold = 1
@@ -52,7 +52,7 @@ def readLevel(file, spawnUnits=True):
         for i in range(len(result)):
             for j in range(len(result[i])):
                 if result[i][j] == 3 or result[i][j] == -3:
-                    result = spawnUnit(result, i, j)
+                    result, buildingTurnCounter = spawnUnit(result, buildingTurnCounter, i, j)
 
     return result, buildingTurnCounter
 
@@ -91,7 +91,7 @@ def findValidSpawnTile(levelState, i, j):
     
     return None
 
-def spawnUnit(levelState, origin0, origin1):
+def spawnUnit(levelState, turnCounter, origin0, origin1):
     newState = copy.deepcopy(levelState)
 
     numUnits = 0
@@ -109,8 +109,9 @@ def spawnUnit(levelState, origin0, origin1):
 
     if validPos != None:
         newState[validPos[0]][validPos[1]] = unitID
+        turnCounter[validPos[0]][validPos[1]] = math.copysign(1, unitID)
 
-    return newState
+    return newState, turnCounter
 
 def incrementTurn(levelState, buildingTurnCounter):
     newState = copy.deepcopy(levelState)
@@ -125,8 +126,9 @@ def incrementTurn(levelState, buildingTurnCounter):
 
             if abs(newTurnCounter[i][j]) > 0:
                 try:
-                    if abs(newTurnCounter[i][j]) % buildingTurnThresholds[abs(newState[i][j]) - 2] == 0:
-                        newState = spawnUnit(newState, i, j)
+                    if abs(newState[i][j]) - 2 < len(buildingTurnThresholds):
+                        if abs(newTurnCounter[i][j]) % buildingTurnThresholds[abs(newState[i][j]) - 2] == 0:
+                            newState, newTurnCounter = spawnUnit(newState, newTurnCounter, i, j)
 
                     if abs(newTurnCounter[i][j]) >= buildingTurnLimits[abs(newState[i][j]) - 2]:
                         newTurnCounter[i][j] = 0
@@ -233,22 +235,14 @@ def makeMove(levelState, buildingTurnCounter, move):
         return newState, newTurnCounter
     
     unitID = levelState[move[0][0]][move[0][1]]
-    moveToID = levelState[move[1][0]][move[1][1]]
 
-    if abs(unitID) == 7 and abs(moveToID) == 7:
-        chance = random.uniform(0, 1)
-        if chance <= attackThreshold:
-            newState[move[0][0]][move[0][1]] = 1
-            newState[move[1][0]][move[1][1]] = unitID
-        else:
-            newState[move[0][0]][move[0][1]] = 1
-    elif move[0][0] == move[1][0] and move[0][1] == move[1][1]:
+    if move[0][0] == move[1][0] and move[0][1] == move[1][1]:
         newState[move[0][0]][move[0][1]] = int(math.copysign(abs(unitID) - 2, unitID))
         newTurnCounter[move[0][0]][move[0][1]] = int(math.copysign(1, unitID))
     else:
         newState[move[0][0]][move[0][1]] = 1
         newState[move[1][0]][move[1][1]] = unitID
         newTurnCounter[move[0][0]][move[0][1]] = 0
-        newTurnCounter[move[1][0]][move[1][1]] = 0
+        newTurnCounter[move[1][0]][move[1][1]] = buildingTurnCounter[move[0][0]][move[0][1]]
     
     return newState, newTurnCounter

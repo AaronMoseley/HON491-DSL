@@ -24,6 +24,7 @@ def MSELoss(actual, target, device):
 
     return loss
 
+"""
 def reward(currState, prevState, currPlayer):
     gameEndVal = 100
     
@@ -54,14 +55,17 @@ def reward(currState, prevState, currPlayer):
 
     sigm = torch.nn.Sigmoid()
     return currUtil - prevUtil
-
 """
+
 def reward(levelState, currPlayer):
+    gameEndVal = 500
+
     if LevelManager.checkWinCond(levelState) != 0:
-        return float("inf") if currPlayer == math.copysign(currPlayer, LevelManager.checkWinCond(levelState)) else -float("inf")
+        return torch.tensor(gameEndVal, dtype=torch.int8) if currPlayer == math.copysign(currPlayer, LevelManager.checkWinCond(levelState)) else torch.tensor(-gameEndVal, dtype=torch.int8)
     
     result = torch.zeros(1)
-    
+    numUnits = 1
+
     for row in levelState:
         for tile in row:
             if tile == 0 or tile == 1:
@@ -71,11 +75,9 @@ def reward(levelState, currPlayer):
                 result += friendlyUnitValues[abs(tile) - 2]
             else:
                 result += enemyUnitValues[abs(tile) - 2]
+                numUnits += 1
 
-    sigm = torch.nn.Sigmoid()
-
-    return sigm(result)
-""" 
+    return result / numUnits
 
 def randomizeState(levelState, buildingTurnCounter, addUnitProb):
     newState = copy.deepcopy(levelState)
@@ -97,8 +99,6 @@ def randomizeState(levelState, buildingTurnCounter, addUnitProb):
             if unit > 4:
                 unit += 1
             newState[i][j] = sign * unit
-
-            if abs(newState[i][j]) >= 2 and abs(newState[i][j]) <= 4:
-                newTurnCounter[i][j] = sign
+            newTurnCounter[i][j] = sign
 
     return newState, newTurnCounter
