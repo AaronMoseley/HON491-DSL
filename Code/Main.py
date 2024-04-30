@@ -15,7 +15,7 @@ os.system("cls")
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-modelLoc = "Models/RLModel5000BudgetEpoch100"
+modelLoc = "../Models/Final/RLModel5000Budget"
 model = NewRLModel.MinMaxWarGamesAI(device)
 model.load_state_dict(torch.load(modelLoc))
 model.eval()
@@ -26,9 +26,9 @@ modelPlayer = 1
 
 testing = False
 if testing:
-    levelLoc = "Levels/Testing/"
+    levelLoc = "../Levels/Testing/"
 else:
-    levelLoc = "Levels/Final/"
+    levelLoc = "../Levels/Final/"
 
 userIn = ""
 while True:
@@ -61,7 +61,6 @@ while True:
     turnCounter = 0
     levelState, buildingTurnCounter = LevelManager.readLevel(levelLoc + levelName)
 
-    movesMade = 0
     currPlayer = -1
     while LevelManager.checkWinCond(levelState) == 0:
         currPlayer *= -1
@@ -70,7 +69,7 @@ while True:
         if currPlayer == 1:
             turnCounter += 1
         
-        Display.displayLevel(levelState, turnCounter, False)
+        Display.displayLevel(levelState, turnCounter, True)
 
         userType = userTypes[0 if currPlayer == 1 else 1]
         if userType == 0:
@@ -135,11 +134,9 @@ while True:
 
         if parsedMove != None:
             levelState, buildingTurnCounter = LevelManager.makeMove(levelState, buildingTurnCounter, parsedMove)
-            movesMade += 1
-            print("Moves Made: " + str(movesMade))
 
         if userType != 0:
-            Display.displayLevel(levelState, turnCounter, False)
+            Display.displayLevel(levelState, turnCounter, True)
             if currPlayer > 0:
                 print("Player 1 (blue):")
             else:

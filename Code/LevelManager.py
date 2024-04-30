@@ -11,8 +11,6 @@ import copy
 buildingTurnThresholds = [-1, 12, 8]
 buildingTurnLimits = [-1, 60, 16, -1, 80, 80]
 
-unitCap = 1000000
-
 #chance the attacking solider wins against an enemy solider
 attackThreshold = 1
 
@@ -100,9 +98,6 @@ def spawnUnit(levelState, turnCounter, origin0, origin1):
         for j in range(len(newState[i])):
             if abs(newState[i][j]) > 1 and player == math.copysign(1, newState[i][j]):
                 numUnits += 1
-
-    if numUnits >= unitCap:
-        return newState
 
     validPos = findValidSpawnTile(newState, origin0, origin1)
     unitID = int(math.copysign(abs(newState[origin0][origin1]) + 3, newState[origin0][origin1]))
